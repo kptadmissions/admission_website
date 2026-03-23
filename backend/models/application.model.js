@@ -93,7 +93,22 @@ academicDetails:{
 ========================= */
 
 categoryDetails:{
-  category:{type:String,default:"GM"},
+  category:{
+    type:String,
+    enum:[
+      "GM",
+      "SC - Category A",
+      "SC - Category B",
+      "SC - Category C",
+      "ST",
+      "Cat-1",
+      "2A",
+      "2B",
+      "3A",
+      "3B"
+    ],
+    default:"GM"
+  },
   casteName:String,
   annualIncome:Number,
 

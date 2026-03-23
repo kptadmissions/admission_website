@@ -777,7 +777,18 @@ const submit = async () => {
           {/* CATEGORY & RESERVATION */}
           <SectionHeader icon={Layers} title="Category & Reservation" />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
-            <SelectGroup id="category" name="category" label="Category" value={form.categoryDetails.category} onChange={(e) => update("categoryDetails", "category", e.target.value)} options={["GM", "SC", "ST", "Cat-1", "2A", "2B", "3A", "3B"]} required disabled={!editable} />
+            <SelectGroup id="category" name="category" label="Category" value={form.categoryDetails.category} onChange={(e) => update("categoryDetails", "category", e.target.value)} options={[
+  "GM",
+  "SC - Category A",
+  "SC - Category B",
+  "SC - Category C",
+  "ST",
+  "Cat-1",
+  "2A",
+  "2B",
+  "3A",
+  "3B"
+]} required disabled={!editable} />
             <InputGroup id="casteName" name="casteName" label="Caste Name" value={form.categoryDetails.casteName} onChange={(e) => update("categoryDetails", "casteName", e.target.value)} required={form.categoryDetails.category !== "GM"} disabled={!editable} />
             <InputGroup id="annualIncome" name="annualIncome" label="Annual Income (₹)" type="number" value={form.categoryDetails.annualIncome} onChange={(e) => update("categoryDetails", "annualIncome", e.target.value)} required disabled={!editable} />
           </div>
