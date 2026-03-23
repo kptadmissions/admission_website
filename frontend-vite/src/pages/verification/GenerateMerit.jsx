@@ -169,10 +169,6 @@ function GenerateView({ stats, onGenerate, listCount }) {
               <span>Base Score = SSLC/10th Percentage</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="bg-blue-200 text-blue-800 text-xs font-bold px-2 py-0.5 rounded">2</span>
-              <span>Category Bonus applied (SC/ST: +5%, Others: +2-3%)</span>
-            </li>
-            <li className="flex items-start gap-2">
               <span className="bg-blue-200 text-blue-800 text-xs font-bold px-2 py-0.5 rounded">3</span>
               <span>Sorted High to Low to assign Ranks</span>
             </li>
@@ -245,15 +241,14 @@ function ListView({ meritList }) {
               <th className="px-6 py-3">Student Name</th>
               <th className="px-6 py-3">Category</th>
               <th className="px-6 py-3 text-center">SSLC %</th>
-              <th className="px-6 py-3 text-center">Bonus</th>
               <th className="px-6 py-3 text-right">Merit Score</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {filteredList.length > 0 ? (
               filteredList.map((app) => {
-                // Calculate rough bonus for display (Merit - SSLC)
-                const bonus = (app.meritScore - app.academicDetails.sslcPercentage).toFixed(2);
+                
+                
                 
                 return (
                   <tr key={app._id} className="hover:bg-gray-50 transition">
@@ -265,7 +260,6 @@ function ListView({ meritList }) {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center text-gray-500">{app.academicDetails?.sslcPercentage}%</td>
-                    <td className="px-6 py-4 text-center text-green-600">+{bonus}</td>
                     <td className="px-6 py-4 text-right font-bold text-gray-900">{app.meritScore.toFixed(2)}</td>
                   </tr>
                 );
