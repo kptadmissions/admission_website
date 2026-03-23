@@ -9,7 +9,6 @@ const ROLES = ["admin", "verification_officer"];
 
 export default function UserManagement() {
   const { getToken } = useAuth();
-
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");

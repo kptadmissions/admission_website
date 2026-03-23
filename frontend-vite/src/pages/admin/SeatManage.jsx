@@ -19,42 +19,56 @@ const BRANCHES = [
 
 export default function SeatManagement() {
   const { getToken } = useAuth();
+
   const [seats, setSeats] = useState({});
   const [inputs, setInputs] = useState({});
   const [loading, setLoading] = useState(true);
 
+  /* FETCH SEATS */
   const fetchSeats = async () => {
-    const token = await getToken();
-    const res = await axios.get(
-      `${import.meta.env.VITE_API_URL}/admin/seats`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+    try {
+      const token = await getToken();
 
-    const seatMap = {};
-    const inputMap = {};
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_URL}/admin/seats`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-    res.data.seats.forEach((s) => {
-      seatMap[s.branch] = s;
-      inputMap[s.branch] = s.totalSeats;
-    });
+      const seatMap = {};
+      const inputMap = {};
 
-    setSeats(seatMap);
-    setInputs(inputMap);
-    setLoading(false);
+      res.data.seats.forEach((s) => {
+        seatMap[s.branch] = s;
+
+        inputMap[s.branch] = {
+          normalTotal: s.normalTotal || 0,
+          lateralTotal: s.lateralTotal || 0,
+        };
+      });
+
+      setSeats(seatMap);
+      setInputs(inputMap);
+      setLoading(false);
+    } catch (err) {
+      toast.error("Failed to load seats");
+    }
   };
 
   useEffect(() => {
     fetchSeats();
   }, []);
 
+  /* SAVE SEATS */
   const save = async (branch) => {
     try {
       const token = await getToken();
+
       await axios.post(
         `${import.meta.env.VITE_API_URL}/admin/seats`,
         {
           branch,
-          totalSeats: Number(inputs[branch]),
+          normalTotal: Number(inputs[branch].normalTotal),
+          lateralTotal: Number(inputs[branch].lateralTotal),
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -108,29 +122,75 @@ export default function SeatManagement() {
           >
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
 
+              {/* LEFT SIDE INFO */}
               <div>
                 <p className="font-semibold text-lg text-gray-800">
                   {b.label}
                 </p>
+
                 <p className="text-sm text-gray-500 mt-1">
-                  Available Seats:
+                  Normal Available:
                   <span className="ml-2 font-bold text-indigo-600">
-                    {seats[b.code]?.availableSeats ?? 0}
+                    {seats[b.code]?.normalAvailable ?? 0}
+                  </span>
+                </p>
+
+                <p className="text-sm text-gray-500">
+                  Lateral Available:
+                  <span className="ml-2 font-bold text-indigo-600">
+                    {seats[b.code]?.lateralAvailable ?? 0}
                   </span>
                 </p>
               </div>
 
-              <div className="flex items-center gap-4">
-                <input
-                  type="number"
-                  min="0"
-                  value={inputs[b.code] ?? ""}
-                  onChange={(e) =>
-                    setInputs({ ...inputs, [b.code]: e.target.value })
-                  }
-                  className="border rounded-xl px-4 py-2 w-32 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50"
-                />
+              {/* INPUTS */}
+              <div className="flex items-end gap-4">
 
+                {/* NORMAL INPUT */}
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-500 mb-1">
+                    Normal Seats
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={inputs[b.code]?.normalTotal ?? ""}
+                    onChange={(e) =>
+                      setInputs({
+                        ...inputs,
+                        [b.code]: {
+                          ...inputs[b.code],
+                          normalTotal: e.target.value,
+                        },
+                      })
+                    }
+                    className="border rounded-xl px-4 py-2 w-28 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50"
+                  />
+                </div>
+
+                {/* LATERAL INPUT */}
+                <div className="flex flex-col">
+                  <label className="text-xs text-gray-500 mb-1">
+                    Lateral Seats
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={inputs[b.code]?.lateralTotal ?? ""}
+                    onChange={(e) =>
+                      setInputs({
+                        ...inputs,
+                        [b.code]: {
+                          ...inputs[b.code],
+                          lateralTotal: e.target.value,
+                        },
+                      })
+                    }
+                    className="border rounded-xl px-4 py-2 w-28 focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50"
+                  />
+                </div>
+
+                {/* SAVE BUTTON */}
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -140,6 +200,7 @@ export default function SeatManagement() {
                   <Save className="w-4 h-4" />
                   Save
                 </motion.button>
+
               </div>
 
             </div>

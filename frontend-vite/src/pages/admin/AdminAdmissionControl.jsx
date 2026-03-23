@@ -10,7 +10,6 @@ export default function AdminAdmissionControl() {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-
   useEffect(() => {
     const load = async () => {
       try {

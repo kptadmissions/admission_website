@@ -1,8 +1,6 @@
 import Seat from "../models/seat.model.js";
 
-/* =========================================
-   GET ALL SEATS
-========================================= */
+/* GET ALL SEATS */
 export const getAllSeats = async (req, res) => {
   try {
     const seats = await Seat.find().sort({ branch: 1 });
@@ -12,63 +10,44 @@ export const getAllSeats = async (req, res) => {
   }
 };
 
-/* =========================================
-   CREATE / UPDATE SEATS (ADMIN)
-========================================= */
+/* CREATE / UPDATE SEATS */
 export const upsertSeat = async (req, res) => {
   try {
-    const { branch, totalSeats } = req.body;
+    const { branch, normalTotal, lateralTotal } = req.body;
 
-    // 🔐 Validation
-    if (!branch || totalSeats === undefined || totalSeats < 0) {
-      return res.status(400).json({
-        message: "Branch and valid totalSeats are required",
-      });
+    if (!branch) {
+      return res.status(400).json({ message: "Branch required" });
     }
 
     let seat = await Seat.findOne({ branch });
 
-    // 🆕 New Branch
     if (!seat) {
+      // Create new
       seat = await Seat.create({
         branch,
-        totalSeats,
-        availableSeats: totalSeats,
+        normalTotal,
+        normalAvailable: normalTotal,
+        lateralTotal,
+        lateralAvailable: lateralTotal,
       });
-    } 
-    // ♻️ Existing Branch
-    else {
-      const oldTotal = seat.totalSeats;
-      const diff = totalSeats - oldTotal;
+    } else {
+      // Update existing
+      const normalDiff = normalTotal - seat.normalTotal;
+      const lateralDiff = lateralTotal - seat.lateralTotal;
 
-      seat.totalSeats = totalSeats;
+      seat.normalTotal = normalTotal;
+      seat.lateralTotal = lateralTotal;
 
-      // Increase available seats ONLY if total increased
-      if (diff > 0) {
-        seat.availableSeats += diff;
-      }
-
-      // Safety clamps
-      if (seat.availableSeats > seat.totalSeats) {
-        seat.availableSeats = seat.totalSeats;
-      }
-
-      if (seat.availableSeats < 0) {
-        seat.availableSeats = 0;
-      }
+      if (normalDiff > 0) seat.normalAvailable += normalDiff;
+      if (lateralDiff > 0) seat.lateralAvailable += lateralDiff;
 
       await seat.save();
     }
 
-    res.json({
-      success: true,
-      seat,
-    });
+    res.json({ success: true, seat });
 
   } catch (error) {
-    console.error("Seat update error:", error);
-    res.status(500).json({
-      message: "Failed to update seat data",
-    });
+    console.error(error);
+    res.status(500).json({ message: "Failed to update seat data" });
   }
 };

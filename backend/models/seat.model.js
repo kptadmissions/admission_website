@@ -11,28 +11,46 @@ const seatSchema = new mongoose.Schema(
       index: true,
     },
 
-    totalSeats: {
+    // NORMAL ADMISSION
+    normalTotal: {
       type: Number,
-      required: true,
+      default: 0,
       min: 0,
     },
 
-    availableSeats: {
+    normalAvailable: {
       type: Number,
-      required: true,
+      default: 0,
+      min: 0,
+    },
+
+    // LATERAL ADMISSION
+    lateralTotal: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    lateralAvailable: {
+      type: Number,
+      default: 0,
       min: 0,
     },
   },
   { timestamps: true }
 );
 
-/**
- * Ensure availableSeats never exceeds totalSeats
- */
+// Safety check
 seatSchema.pre("save", function (next) {
-  if (this.availableSeats > this.totalSeats) {
-    this.availableSeats = this.totalSeats;
-  }
+  if (this.normalAvailable > this.normalTotal)
+    this.normalAvailable = this.normalTotal;
+
+  if (this.lateralAvailable > this.lateralTotal)
+    this.lateralAvailable = this.lateralTotal;
+
+  if (this.normalAvailable < 0) this.normalAvailable = 0;
+  if (this.lateralAvailable < 0) this.lateralAvailable = 0;
+
   next();
 });
 
