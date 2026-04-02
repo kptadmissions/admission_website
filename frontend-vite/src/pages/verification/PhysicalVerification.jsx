@@ -53,24 +53,37 @@ export default function PhysicalVerification() {
 
   // Handle Verify Action
   const handleVerify = async (verified) => {
-    if (!selectedStudent) return;
-    
-    try {
-      const token = await getToken();
-      await axios.patch(
-        `${import.meta.env.VITE_API_URL}/physical-verification/verify/${selectedStudent._id}`,
-        { verified, remarks },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      toast.success(verified ? "Documents Verified! Sent for Final Approval." : "Marked as Failed");
-      setSelectedStudent(null);
-      setRemarks("");
-      fetchStudents();
-    } catch (err) {
-      toast.error("Action failed");
-    }
-  };
+  if (!selectedStudent) return;
+
+  let failedDocs = [];
+
+  // ❌ if clicked FAIL button
+  if (!verified) {
+    failedDocs = ["sslc"]; // treat as critical fail
+  } else {
+    if (!checklist.marksCard) failedDocs.push("sslc");
+    if (!checklist.incomeCert) failedDocs.push("caste");
+    if (!checklist.studyCert) failedDocs.push("rural");
+  }
+
+  try {
+    const token = await getToken();
+
+    await axios.patch(
+      `${import.meta.env.VITE_API_URL}/physical-verification/verify/${selectedStudent._id}`,
+      { failedDocs, remarks },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    toast.success("Verification completed");
+    setSelectedStudent(null);
+    setRemarks("");
+    fetchStudents();
+
+  } catch {
+    toast.error("Failed");
+  }
+};
 
   return (
     <div className="max-w-7xl mx-auto p-6 min-h-screen bg-gray-50">
