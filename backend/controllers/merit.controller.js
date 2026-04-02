@@ -34,14 +34,16 @@ export const generateMeritList = async (req, res) => {
     });
 
     for (let i = 0; i < scored.length; i++) {
-      const application = scored[i].app;
+  const application = scored[i].app;
 
-      application.rank = i + 1;
-      application.meritScore = scored[i].meritScore;
-      application.status = "MERIT_GENERATED";
+  application.rank = i + 1;
+  application.meritScore = scored[i].meritScore;
 
-      await application.save();
-    }
+  // ✅ DIRECT MOVE TO VERIFICATION
+  application.status = "PHYSICAL_VERIFICATION_PENDING";
+
+  await application.save();
+}
 
     res.json({
       success: true,
