@@ -391,25 +391,37 @@ function Info({ label, value }) {
 }
 
 function DocumentRow({ label, url }) {
-    return (
-        <div className="flex justify-between items-center text-sm py-1 border-b border-gray-100 last:border-0">
-            <span className="text-gray-600">{label}</span>
-            {url ? (
-                <a 
-                    href={url} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="px-3 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800 rounded text-xs font-semibold transition-colors border border-indigo-200"
-                >
-                    View
-                </a>
-            ) : (
-                <span className="text-xs text-red-500 font-medium bg-red-50 px-2 py-1 rounded border border-red-100">
-                    Not Uploaded
-                </span>
-            )}
-        </div>
-    );
+
+  const openDocument = () => {
+    if (!url) return;
+
+    // ✅ detect pdf
+    if (url.toLowerCase().endsWith(".pdf")) {
+      const fixedUrl = url.replace("/upload/", "/upload/fl_attachment/");
+      window.open(fixedUrl, "_blank");
+    } else {
+      window.open(url, "_blank");
+    }
+  };
+
+  return (
+    <div className="flex justify-between items-center text-sm py-1 border-b border-gray-100 last:border-0">
+      <span className="text-gray-600">{label}</span>
+
+      {url ? (
+        <button
+          onClick={openDocument}
+          className="px-3 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800 rounded text-xs font-semibold transition-colors border border-indigo-200"
+        >
+          View
+        </button>
+      ) : (
+        <span className="text-xs text-red-500 font-medium bg-red-50 px-2 py-1 rounded border border-red-100">
+          Not Uploaded
+        </span>
+      )}
+    </div>
+  );
 }
 
 function Badge({ children }) {

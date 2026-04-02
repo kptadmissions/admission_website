@@ -165,7 +165,7 @@ function StudentCard({ app, onVerify, isPending }) {
   const getStatusBadge = (status) => {
       if (status === "DOCUMENTS_VERIFIED") return (
           <div className="px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 bg-yellow-100 text-yellow-800 border border-yellow-200">
-             <FaHourglassHalf /> Waiting Approval
+             <FaHourglassHalf /> Verified
           </div>
       );
       if (status === "DOCUMENTS_FAILED") return (
@@ -347,7 +347,7 @@ function VerificationModal({ student, onClose, onConfirm, remarks, setRemarks })
                         allCriticalChecked ? "bg-indigo-600 hover:bg-indigo-700" : "bg-gray-400 cursor-not-allowed"
                     }`}
                 >
-                    {allCriticalChecked ? <><FaCheckCircle/> Submit for Approval</> : "Check critical docs to proceed"}
+                    {allCriticalChecked ? <><FaCheckCircle/> Click here to make as Verified</> : "Check critical docs to proceed"}
                 </button>
             </div>
         </div>
