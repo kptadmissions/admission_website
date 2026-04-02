@@ -88,22 +88,27 @@ export const getMeritList = async (req, res) => {
 export const startPhysicalVerification = async (req, res) => {
   try {
     const settings = await AdmissionSettings.findOne();
-    const activeType = settings.normalActive ? "NORMAL" : "LATERAL";
 
-    await Application.updateMany(
+    let activeType = null;
+    if (settings.normalActive) activeType = "NORMAL";
+    if (settings.lateralActive) activeType = "LATERAL";
+
+    const result = await Application.updateMany(
       { 
         status: "MERIT_GENERATED",
-        admissionType: activeType
+        admissionType: { $regex: new RegExp(`^${activeType}$`, "i") }
       },
       { status: "PHYSICAL_VERIFICATION_PENDING" }
     );
 
+    console.log("Updated:", result.modifiedCount);
+
     res.json({
       success: true,
-      message: "Moved to Physical Verification"
+      message: `Moved ${result.modifiedCount} students`
     });
 
   } catch (err) {
-    res.status(500).json({ message: "Failed to move students" });
+    res.status(500).json({ message: "Failed" });
   }
 };
