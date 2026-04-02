@@ -1,6 +1,9 @@
 import Application from "../models/application.model.js";
 import AdmissionSettings from "../models/AdmissionSettings.js";
 
+/* =========================================
+   GENERATE MERIT LIST
+========================================= */
 export const generateMeritList = async (req, res) => {
   try {
     const settings = await AdmissionSettings.findOne();
@@ -50,21 +53,50 @@ export const generateMeritList = async (req, res) => {
   }
 };
 
-// =========================================
-// START PHYSICAL VERIFICATION
-// =========================================
+/* =========================================
+   GET MERIT LIST  ✅ (THIS WAS MISSING)
+========================================= */
+export const getMeritList = async (req, res) => {
+  try {
+    const settings = await AdmissionSettings.findOne();
+    const activeType = settings.normalActive ? "NORMAL" : "LATERAL";
+
+    const meritList = await Application.find({
+      status: "MERIT_GENERATED",
+      admissionType: activeType
+    })
+      .sort({ rank: 1 })
+      .select(
+        "rank meritScore personalDetails.name categoryDetails.category academicDetails.sslcPercentage"
+      );
+
+    res.json({
+      success: true,
+      meritList
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      message: "Failed to fetch merit list"
+    });
+  }
+};
+
+/* =========================================
+   START PHYSICAL VERIFICATION
+========================================= */
 export const startPhysicalVerification = async (req, res) => {
   try {
     const settings = await AdmissionSettings.findOne();
-const activeType = settings.normalActive ? "NORMAL" : "LATERAL";
+    const activeType = settings.normalActive ? "NORMAL" : "LATERAL";
 
-await Application.updateMany(
-  { 
-    status: "MERIT_GENERATED",
-    admissionType: activeType   // ✅ ADD THIS
-  },
-  { status: "PHYSICAL_VERIFICATION_PENDING" }
-);
+    await Application.updateMany(
+      { 
+        status: "MERIT_GENERATED",
+        admissionType: activeType
+      },
+      { status: "PHYSICAL_VERIFICATION_PENDING" }
+    );
 
     res.json({
       success: true,
