@@ -26,24 +26,32 @@ export default function PhysicalVerification() {
 
   // Fetch Data
   const fetchStudents = async () => {
-    try {
-      setLoading(true);
-      const token = await getToken();
-      const res = await axios.get(
-        `${import.meta.env.VITE_API_URL}/physical-verification/list`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          params: { status: activeTab, search: searchTerm }
+  try {
+    setLoading(true);
+    const token = await getToken();
+
+    const res = await axios.get(
+      `${import.meta.env.VITE_API_URL}/physical-verification/list`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { 
+          status: activeTab || "PENDING",   // ✅ FIX
+          search: searchTerm 
         }
-      );
-      setApplications(res.data.applications);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to load data");
-    } finally {
-      setLoading(false);
-    }
-  };
+      }
+    );
+
+    console.log("DATA:", res.data); // ✅ DEBUG
+
+    setApplications(res.data.applications);
+
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to load data");
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Debounce Search & Tab Change
   useEffect(() => {
