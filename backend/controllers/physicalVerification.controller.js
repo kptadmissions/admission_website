@@ -52,59 +52,61 @@ export const verifyDocuments = async (req, res) => {
     const app = await Application.findById(id);
     if (!app) return res.status(404).json({ message: "Not found" });
 
-    // ❌ CRITICAL FAIL
-    if (failedDocs.includes("sslc") || failedDocs.includes("aadhaar")) {
+    /* =========================
+       1. CRITICAL DOCUMENT CHECK
+    ========================= */
+
+    const criticalDocs = ["sslc", "aadhaar", "tc", "study"];
+
+    const hasCriticalFail = failedDocs.some(doc =>
+      criticalDocs.includes(doc)
+    );
+
+    if (hasCriticalFail) {
       app.status = "REJECTED";
 
       app.physicalVerification = {
         verified: false,
         verifiedBy: req.auth.userId,
         verifiedAt: new Date(),
-        remarks: "Critical document failed"
+        remarks: "Critical documents missing"
       };
 
       await app.save();
 
       return res.json({
         success: false,
-        message: "Application Rejected (invalid documents)"
+        message: "Application Rejected (critical documents missing)"
       });
     }
 
-    // 🟨 RESERVATION FIX
-    if (failedDocs.includes("caste")) {
+    /* =========================
+       2. RESERVATION FIX
+    ========================= */
+
+    // ✅ caste only if NOT GM
+    if (
+      app.categoryDetails.category !== "GM" &&
+      failedDocs.includes("caste")
+    ) {
       app.categoryDetails.category = "GM";
       app.categoryDetails.casteName = "";
     }
 
+    // rural removal
     if (failedDocs.includes("rural")) {
       app.categoryDetails.isRural = false;
     }
 
+    // kannada removal
     if (failedDocs.includes("kannada")) {
       app.categoryDetails.isKannadaMedium = false;
     }
 
-    // ❌ NON-CRITICAL FAIL → mark failed
-    if (failedDocs.length > 0) {
-      app.status = "DOCUMENTS_FAILED";
+    /* =========================
+       3. FINAL SUCCESS
+    ========================= */
 
-      app.physicalVerification = {
-        verified: false,
-        verifiedBy: req.auth.userId,
-        verifiedAt: new Date(),
-        remarks: remarks || "Documents mismatch"
-      };
-
-      await app.save();
-
-      return res.json({
-        success: false,
-        message: "Documents verification failed"
-      });
-    }
-
-    // ✅ SUCCESS
     app.physicalVerification = {
       verified: true,
       verifiedBy: req.auth.userId,

@@ -26,32 +26,30 @@ export default function PhysicalVerification() {
 
   // Fetch Data
   const fetchStudents = async () => {
-  try {
-    setLoading(true);
-    const token = await getToken();
+    try {
+      setLoading(true);
+      const token = await getToken();
 
-    const res = await axios.get(
-      `${import.meta.env.VITE_API_URL}/physical-verification/list`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { 
-          status: activeTab || "PENDING",   // ✅ FIX
-          search: searchTerm 
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_URL}/physical-verification/list`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { 
+            status: activeTab || "PENDING", 
+            search: searchTerm 
+          }
         }
-      }
-    );
+      );
 
-    console.log("DATA:", res.data); // ✅ DEBUG
+      setApplications(res.data.applications);
 
-    setApplications(res.data.applications);
-
-  } catch (err) {
-    console.error(err);
-    toast.error("Failed to load data");
-  } finally {
-    setLoading(false);
-  }
-};
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Debounce Search & Tab Change
   useEffect(() => {
@@ -60,36 +58,31 @@ export default function PhysicalVerification() {
   }, [activeTab, searchTerm]);
 
   // Handle Verify Action
-  const handleVerify = async (verified) => {
+  const handleVerify = async (verified, failedDocs) => {
   if (!selectedStudent) return;
-
-  let failedDocs = [];
-
-  // ❌ if clicked FAIL button
-  if (!verified) {
-    failedDocs = ["sslc"]; // treat as critical fail
-  } else {
-    if (!checklist.marksCard) failedDocs.push("sslc");
-    if (!checklist.incomeCert) failedDocs.push("caste");
-    if (!checklist.studyCert) failedDocs.push("rural");
-  }
 
   try {
     const token = await getToken();
 
     await axios.patch(
       `${import.meta.env.VITE_API_URL}/physical-verification/verify/${selectedStudent._id}`,
-      { failedDocs, remarks },
-      { headers: { Authorization: `Bearer ${token}` } }
+      {
+        failedDocs,
+        remarks
+      },
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
     );
 
-    toast.success("Verification completed");
+    toast.success(verified ? "Documents verified successfully!" : "Application rejected.");
     setSelectedStudent(null);
     setRemarks("");
     fetchStudents();
 
-  } catch {
-    toast.error("Failed");
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to process verification");
   }
 };
 
@@ -99,7 +92,7 @@ export default function PhysicalVerification() {
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-gray-800">Admission Counter</h2>
+          <h2 className="text-3xl font-bold text-gray-800">PHYSICAL DOCUMENT VERIFICATION</h2>
           <p className="text-gray-500 text-sm">Verify original documents and forward for Final Approval</p>
         </div>
 
@@ -169,21 +162,17 @@ export default function PhysicalVerification() {
 
 /* ================= COMPONENT: STUDENT CARD ================= */
 function StudentCard({ app, onVerify, isPending }) {
-  // Helper for Status Badges
   const getStatusBadge = (status) => {
-      // 🟡 Intermediate State (Verified by you, waiting for Principal)
       if (status === "DOCUMENTS_VERIFIED") return (
           <div className="px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 bg-yellow-100 text-yellow-800 border border-yellow-200">
              <FaHourglassHalf /> Waiting Approval
           </div>
       );
-      // 🔴 Failed
       if (status === "DOCUMENTS_FAILED") return (
           <div className="px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 bg-red-100 text-red-700 border border-red-200">
              <FaTimesCircle /> Failed
           </div>
       );
-      // 🟢 Fully Admitted (If showing history)
       if (status === "ADMITTED") return (
           <div className="px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 bg-green-100 text-green-700 border border-green-200">
              <FaUserCheck /> Admitted
@@ -236,17 +225,50 @@ function StudentCard({ app, onVerify, isPending }) {
 /* ================= COMPONENT: VERIFICATION MODAL ================= */
 function VerificationModal({ student, onClose, onConfirm, remarks, setRemarks }) {
   const [checklist, setChecklist] = useState({
-    marksCard: false,
+    sslc: false,
+    aadhaar: false,
     tc: false,
-    photos: false,
-    incomeCert: false,
-    studyCert: false
+    study: false,
+    caste: false,
+    rural: false,
+    kannada: false
   });
 
-  const allChecked = Object.values(checklist).every(Boolean);
+  const allCriticalChecked = 
+    checklist.sslc && 
+    checklist.aadhaar && 
+    checklist.tc && 
+    checklist.study;
 
   const toggleCheck = (key) => {
     setChecklist(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const submitAction = (isVerified) => {
+    let failedDocs = [];
+
+    if (!isVerified) {
+      failedDocs = ["sslc"];
+    } else {
+      // Check critical docs
+      if (!checklist.sslc) failedDocs.push("sslc");
+      if (!checklist.aadhaar) failedDocs.push("aadhaar");
+      if (!checklist.tc) failedDocs.push("tc");
+      if (!checklist.study) failedDocs.push("study");
+
+      // Check dynamic non-critical docs
+      if (student.categoryDetails?.category !== "GM" && !checklist.caste) {
+        failedDocs.push("caste");
+      }
+      if (student.categoryDetails?.isRural && !checklist.rural) {
+        failedDocs.push("rural");
+      }
+      if (student.categoryDetails?.isKannadaMedium && !checklist.kannada) {
+        failedDocs.push("kannada");
+      }
+    }
+
+    onConfirm(isVerified, failedDocs);
   };
 
   return (
@@ -281,12 +303,21 @@ function VerificationModal({ student, onClose, onConfirm, remarks, setRemarks })
             <div>
                 <h4 className="font-bold text-gray-500 uppercase text-xs tracking-wider mb-3">Check Original Docs</h4>
                 <div className="space-y-2">
-                    <CheckItem label="SSLC / 10th Marks Card" checked={checklist.marksCard} onChange={() => toggleCheck('marksCard')} />
+                    <CheckItem label="SSLC / 10th Marks Card" checked={checklist.sslc} onChange={() => toggleCheck('sslc')} />
+                    <CheckItem label="Aadhaar Card" checked={checklist.aadhaar} onChange={() => toggleCheck('aadhaar')} />
                     <CheckItem label="Transfer Certificate (TC)" checked={checklist.tc} onChange={() => toggleCheck('tc')} />
-                    <CheckItem label="Passport Size Photos (2)" checked={checklist.photos} onChange={() => toggleCheck('photos')} />
-                    <CheckItem label="Study Certificate (7 Years)" checked={checklist.studyCert} onChange={() => toggleCheck('studyCert')} />
-                    {(student.categoryDetails?.category !== "GM") && (
-                        <CheckItem label="Caste & Income Certificate" checked={checklist.incomeCert} onChange={() => toggleCheck('incomeCert')} />
+                    <CheckItem label="Study Certificate (7 Years)" checked={checklist.study} onChange={() => toggleCheck('study')} />
+                    
+                    {student.categoryDetails?.category !== "GM" && (
+                        <CheckItem label="Caste Certificate" checked={checklist.caste} onChange={() => toggleCheck('caste')} />
+                    )}
+                    
+                    {student.categoryDetails?.isRural && (
+                        <CheckItem label="Rural Certificate" checked={checklist.rural} onChange={() => toggleCheck('rural')} />
+                    )}
+                    
+                    {student.categoryDetails?.isKannadaMedium && (
+                        <CheckItem label="Kannada Medium Certificate" checked={checklist.kannada} onChange={() => toggleCheck('kannada')} />
                     )}
                 </div>
             </div>
@@ -304,19 +335,19 @@ function VerificationModal({ student, onClose, onConfirm, remarks, setRemarks })
 
             <div className="flex gap-3">
                 <button 
-                    onClick={() => onConfirm(false)}
+                    onClick={() => submitAction(false)}
                     className="flex-1 py-3 border border-red-200 text-red-700 bg-white hover:bg-red-50 rounded-lg font-medium transition"
                 >
                     Reject / Fail
                 </button>
                 <button 
-                    onClick={() => onConfirm(true)}
-                    disabled={!allChecked}
+                    onClick={() => submitAction(true)}
+                    disabled={!allCriticalChecked}
                     className={`flex-1 py-3 text-white rounded-lg font-bold shadow-md transition flex items-center justify-center gap-2 ${
-                        allChecked ? "bg-indigo-600 hover:bg-indigo-700" : "bg-gray-400 cursor-not-allowed"
+                        allCriticalChecked ? "bg-indigo-600 hover:bg-indigo-700" : "bg-gray-400 cursor-not-allowed"
                     }`}
                 >
-                    {allChecked ? <><FaCheckCircle/> Submit for Approval</> : "Check all items to proceed"}
+                    {allCriticalChecked ? <><FaCheckCircle/> Submit for Approval</> : "Check critical docs to proceed"}
                 </button>
             </div>
         </div>

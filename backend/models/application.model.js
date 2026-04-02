@@ -133,14 +133,24 @@ branchPreferences:{
 documents:{
   candidateSignature:String,
   parentSignature:String,
+
+  // ✅ CRITICAL DOCUMENTS
   sslcMarksCard:String,
+  aadhaarCard:String,
+  transferCertificate:String,        // ✅ NEW (TC)
+  studyCertificate:String,           // ✅ NEW (7 years study)
+
+  // OPTIONAL ACADEMIC
   itiMarksCard:String,
   pucMarksCard:String,
-  aadhaarCard:String,
+
+  // ✅ RESERVATION DOCUMENTS
   casteCertificate:String,
   incomeCertificate:String,
   ruralCertificate:String,
   kannadaCertificate:String,
+
+  // OPTIONAL
   studyExemptionCertificate:String
 },
 
