@@ -12,7 +12,8 @@ import {
   Loader2, 
   Award, 
   ArrowRight,
-  Info
+  Info,
+  Check
 } from "lucide-react";
 import { motion } from "framer-motion";
 import FullPageLoader from "../../components/FullPageLoader";
@@ -43,7 +44,7 @@ export default function StudentDashboard() {
 
       setApplication(res.data.application || null);
 
-      if (res.data.application?.status === "SEAT_ALLOTTED") {
+      if (res.data.application?.status === "SEAT_ALLOTTED" || res.data.application?.status === "SEAT_ACCEPTED") {
         const seatRes = await axios.get(`${import.meta.env.VITE_API_URL}/student/seat`, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -114,7 +115,29 @@ export default function StudentDashboard() {
 
   if (loading) return <FullPageLoader label="Loading Student Dashboard..." />;
 
-  const showAcknowledgementStatuses = ["SUBMITTED", "VERIFIED", "MERIT_GENERATED", "SEAT_ALLOTTED", "SEAT_ACCEPTED", "PHYSICAL_VERIFICATION_PENDING", "ADMITTED"];
+  // MERIT_GENERATED removed from valid acknowledgement statuses
+  const showAcknowledgementStatuses = [
+    "SUBMITTED", 
+    "VERIFIED", 
+    "PHYSICAL_VERIFICATION_PENDING", 
+    "DOCUMENTS_VERIFIED", 
+    "SEAT_ALLOTTED", 
+    "SEAT_ACCEPTED", 
+    "ADMITTED"
+  ];
+
+  const getStatusStyles = (status) => {
+    if (["DOCUMENTS_VERIFIED", "ADMITTED", "SEAT_ACCEPTED"].includes(status)) {
+      return "text-emerald-700 bg-emerald-100/80 border-emerald-200/50";
+    }
+    if (status === "REJECTED" || status === "CORRECTION_REQUIRED") {
+      return "text-red-700 bg-red-100/80 border-red-200/50";
+    }
+    if (status === "PHYSICAL_VERIFICATION_PENDING") {
+      return "text-amber-700 bg-amber-100/80 border-amber-200/50";
+    }
+    return "text-indigo-700 bg-indigo-100/80 border-indigo-200/50";
+  };
 
   return (
     <motion.div 
@@ -153,6 +176,27 @@ export default function StudentDashboard() {
             <Link to="/student/application" className="text-indigo-600 font-semibold hover:text-purple-700 flex items-center gap-2 bg-indigo-50 px-5 py-2.5 rounded-xl hover:bg-indigo-100 transition-colors duration-200">
               <FileText size={18} /> View Application Form <ArrowRight size={16} />
             </Link>
+          </div>
+
+          {/* PROGRESS TIMELINE UI */}
+          <div className="bg-white/80 backdrop-blur-lg p-6 rounded-2xl shadow-sm border border-gray-100 hidden md:block">
+            <div className="flex justify-between items-center relative">
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-gray-200 -z-10 rounded-full"></div>
+              {getProgressSteps(application.status).map((step, idx) => (
+                <div key={idx} className="flex flex-col items-center gap-2 relative bg-white px-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm border-2 transition-colors duration-300
+                    ${step.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 
+                      step.current ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200' : 
+                      'bg-gray-100 border-gray-300 text-gray-400'}`}
+                  >
+                    {step.completed ? <Check size={16} strokeWidth={3} /> : idx + 1}
+                  </div>
+                  <span className={`text-xs font-bold tracking-wide ${step.current ? 'text-indigo-700' : step.completed ? 'text-emerald-700' : 'text-gray-400'}`}>
+                    {step.label}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* CORRECTION REQUIRED ALERT */}
@@ -214,31 +258,40 @@ export default function StudentDashboard() {
                 <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Current Status</p>
               </div>
 
-              <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100/50 space-y-5">
+              <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-100/50 space-y-5">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div className="flex flex-col gap-2">
-                    <span className="text-xs text-indigo-400 font-bold uppercase tracking-wider">Application State</span>
-                    <div className="text-indigo-700 bg-indigo-100/80 px-4 py-1.5 rounded-lg inline-flex w-fit font-bold border border-indigo-200/50 shadow-sm">
-                      {application.status.replace(/_/g, " ")}
+                    <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Application State</span>
+                    <div className={`px-4 py-1.5 rounded-lg inline-flex w-fit font-bold border shadow-sm ${getStatusStyles(application.status)}`}>
+                      {
+                        {
+                          PHYSICAL_VERIFICATION_PENDING: "Rank Generated - Visit College",
+                          DOCUMENTS_VERIFIED: "Verification Completed",
+                          SEAT_ALLOTTED: "Seat Allotted",
+                          SEAT_ACCEPTED: "Seat Accepted"
+                        }[application.status] || application.status.replace(/_/g, " ")
+                      }
                     </div>
                   </div>
                   
                   <div className="flex flex-col gap-2 items-start md:items-end">
-                    <span className="text-xs text-purple-400 font-bold uppercase tracking-wider">Merit Score</span>
-                    {application.meritScore ? (
+                    <span className="text-xs text-purple-400 font-bold uppercase tracking-wider">Rank & Score</span>
+                    {(application.meritScore || application.meritRank) ? (
                       <div className="flex items-center gap-1.5 bg-gradient-to-r from-purple-100 to-fuchsia-100 text-purple-800 px-4 py-1.5 rounded-lg font-extrabold border border-purple-200 shadow-sm">
                         <Award size={16} className="text-purple-600" />
-                        {application.meritScore}
+                        {application.meritRank && <span>Rank: {application.meritRank}</span>}
+                        {application.meritRank && application.meritScore && <span className="mx-1 opacity-50">|</span>}
+                        {application.meritScore && <span>Score: {application.meritScore}</span>}
                       </div>
                     ) : (
                       <span className="text-sm text-gray-500 italic bg-gray-100/80 px-3 py-1.5 rounded-lg border border-gray-200">
-                        Merit not generated yet
+                        Rank not generated yet
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-indigo-100">
+                <div className="pt-3 border-t border-gray-200">
                   <p className="text-sm text-gray-700 flex items-start gap-2 font-medium">
                     <span className="mt-0.5 text-indigo-500"><Info size={16} /></span>
                     {nextStepMessage(application.status)}
@@ -332,15 +385,47 @@ export default function StudentDashboard() {
 /* HELPERS */
 function nextStepMessage(s) {
   return {
-    "DRAFT": "Please complete your application form.",
-    "SUBMITTED": "Your application is under review by officials.",
-    "CORRECTION_REQUIRED": "Action needed: Fix highlighted corrections.",
-    "VERIFIED": "Application verified. Waiting for merit list generation.",
-    "MERIT_GENERATED": "Merit list published. Awaiting seat allotment.",
-    "SEAT_ALLOTTED": "Seat allotted. Please accept or reject your seat.",
-    "SEAT_ACCEPTED": "Seat confirmed. Await physical document verification.",
-    "PHYSICAL_VERIFICATION_PENDING": "Pending physical document verification at the college.",
-    "ADMITTED": "Congratulations! Admission completed successfully.",
-    "REJECTED": "Application has been rejected."
-  }[s] || "";
+    "DRAFT": "Complete your application form.",
+    "SUBMITTED": "Your application is submitted and under review.",
+    "CORRECTION_REQUIRED": "Please correct and resubmit your application.",
+    "VERIFIED": "Application verified. Preparing merit rank.",
+    "PHYSICAL_VERIFICATION_PENDING": "Your rank is generated. Visit college for physical document verification.",
+    "DOCUMENTS_VERIFIED": "Documents verified successfully. Wait for seat allotment.",
+    "SEAT_ALLOTTED": "Seat allotted. Accept or reject your seat.",
+    "SEAT_ACCEPTED": "Seat accepted. Admission process will complete soon.",
+    "ADMITTED": "Congratulations! Admission completed.",
+    "REJECTED": "Application rejected."
+  }[s] || "Application is currently processing.";
+}
+
+function getProgressSteps(currentStatus) {
+  const stepsDef = [
+    { id: "SUBMITTED", label: "Submitted" },
+    { id: "VERIFIED", label: "Verified" },
+    { id: "PHYSICAL_VERIFICATION_PENDING", label: "Rank" },
+    { id: "DOCUMENTS_VERIFIED", label: "Verification" },
+    { id: "SEAT_ALLOTTED", label: "Seat" }, // Merged SEAT_ACCEPTED logically here for UI
+    { id: "ADMITTED", label: "Admission" }
+  ];
+
+  const statusMap = {
+    "DRAFT": -1,
+    "SUBMITTED": 0,
+    "CORRECTION_REQUIRED": 0,
+    "VERIFIED": 1,
+    "PHYSICAL_VERIFICATION_PENDING": 2,
+    "DOCUMENTS_VERIFIED": 3,
+    "SEAT_ALLOTTED": 4,
+    "SEAT_ACCEPTED": 4, 
+    "ADMITTED": 5,
+    "REJECTED": -1
+  };
+
+  const currentIndex = statusMap[currentStatus] ?? -1;
+
+  return stepsDef.map((step, index) => ({
+    ...step,
+    completed: index < currentIndex || (index === 5 && currentStatus === "ADMITTED"),
+    current: index === currentIndex
+  }));
 }

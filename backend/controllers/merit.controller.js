@@ -64,7 +64,7 @@ export const getMeritList = async (req, res) => {
     const activeType = settings.normalActive ? "NORMAL" : "LATERAL";
 
     const meritList = await Application.find({
-      status: "MERIT_GENERATED",
+      status: "PHYSICAL_VERIFICATION_PENDING",
       admissionType: activeType
     })
       .sort({ rank: 1 })
