@@ -28,7 +28,8 @@ export default function AdminNavbar() {
             Seat Management
           </Link>
           <Link to="/admin/admission-control">Admission Control</Link>
-
+          <Link to="/admin/exam-questions">Exam Questions</Link>
+          <Link to="/admin/exam-control">Exam Control</Link>
 
           <UserButton afterSignOutUrl="/" />
         </div>

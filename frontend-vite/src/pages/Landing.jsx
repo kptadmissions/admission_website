@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import FullPageLoader from "../components/FullPageLoader";
+
 export default function Landing() {
 
   const [status, setStatus] = useState({
@@ -12,7 +13,10 @@ export default function Landing() {
   useEffect(() => {
     const loadStatus = async () => {
       try {
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/admission/settings`);
+        const res = await axios.get(
+          `${import.meta.env.VITE_API_URL}/admission/settings`
+        );
+
         setStatus({
           normal: res.data.normalActive,
           lateral: res.data.lateralActive,
@@ -22,14 +26,16 @@ export default function Landing() {
         setStatus({ normal: false, lateral: false, loading: false });
       }
     };
+
     loadStatus();
   }, []);
 
-  const renderStatus = () => {
-    if (status.loading) {
-  return <FullPageLoader label="Checking admission status..." />;
-}
+  // ✅ FIX: Loader should cover full page
+  if (status.loading) {
+    return <FullPageLoader label="Checking admission status..." />;
+  }
 
+  const renderStatus = () => {
     if (!status.normal && !status.lateral) {
       return (
         <span className="px-4 py-2 rounded-full bg-red-100 text-red-600 text-xs font-bold">
@@ -58,13 +64,14 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 relative overflow-hidden">
 
-      {/* Dot Background */}
+      {/* Background */}
       <div
         className="absolute inset-0 opacity-30"
         style={{
-          backgroundImage: "radial-gradient(circle, #a5b4fc 1px, transparent 1px)",
+          backgroundImage:
+            "radial-gradient(circle, #a5b4fc 1px, transparent 1px)",
           backgroundSize: "40px 40px",
         }}
       />
@@ -72,40 +79,33 @@ export default function Landing() {
       <section className="relative max-w-7xl mx-auto px-6 py-24 grid md:grid-cols-2 gap-12 items-center">
 
         {/* LEFT */}
-        <div className="space-y-6 text-center md:text-left">
+        <div className="space-y-5 text-center md:text-left">
 
-          {/* LIVE STATUS */}
           {renderStatus()}
 
           <p className="uppercase tracking-widest text-indigo-600 font-semibold text-sm">
-            Autonomous Polytechnic Institution
+            Government Polytechnic Institution
           </p>
 
-          <h1 className="text-4xl lg:text-5xl font-bold">
-            Karnataka Polytechnic <br />
-            <span className="text-indigo-600">Mangalore (KPT)</span>
+          {/* ✅ FIX: responsive text (no overflow) */}
+          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800 break-words leading-snug">
+            KARNATAKA (GOVT.) POLYTECHNIC, MANGALORE
           </h1>
 
-          <p className="text-gray-600 max-w-xl mx-auto md:mx-0">
-            Official diploma admission portal. Apply, verify documents,
-            view merit list and track admission progress securely.
+          <p className="text-sm text-gray-500 font-medium">
+            (An Autonomous Institution Under AICTE, New Delhi)
           </p>
-
-          <div className="flex gap-3 flex-wrap justify-center md:justify-start text-sm">
-            <span className="px-4 py-2 bg-white rounded-full shadow">🎓 Diploma</span>
-            <span className="px-4 py-2 bg-white rounded-full shadow">📍 Mangalore</span>
-            <span className="px-4 py-2 bg-white rounded-full shadow">🏛 Autonomous</span>
-          </div>
 
         </div>
 
-        {/* IMAGE */}
+        {/* RIGHT IMAGE */}
         <div className="relative flex justify-center">
           <div className="absolute inset-0 bg-indigo-400 blur-[80px] opacity-20 rounded-full"></div>
+
           <img
             src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSohoo_3dE0QLEFuPAGCQQZXaCbHBiWD__74w&s"
-            alt="KPT"
-            className="relative z-10 max-w-md rounded-2xl shadow-xl border"
+            alt="KPT Mangalore"
+            className="relative z-10 max-w-md w-full rounded-2xl shadow-xl border"
           />
         </div>
 

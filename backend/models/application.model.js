@@ -116,7 +116,16 @@ categoryDetails:{
   isKannadaMedium:{type:Boolean,default:false},
   isStudyCertificateExempt:{type:Boolean,default:false}
 },
-
+studyDetails: [
+  {
+    level: String,
+    academicYear: String,
+    schoolName: String,
+    district: String,
+    state: String,
+    source: String
+  }
+],
 /* =========================
 5. BRANCH
 ========================= */
@@ -186,7 +195,12 @@ physicalVerification:{
   verifiedAt:Date,
   remarks:String
 },
-
+examDetails: {
+  attended: { type: Boolean, default: false },
+  score: Number,
+  totalQuestions: Number,
+  percentage: Number
+},
 /* =========================
 9. STATUS
 ========================= */
@@ -196,6 +210,7 @@ status:{
   enum:[
     "DRAFT",
     "SUBMITTED",
+
     "UNDER_VERIFICATION",
     "CORRECTION_REQUIRED",
     "REJECTED",
@@ -203,13 +218,8 @@ status:{
     "VERIFIED",
     "MERIT_GENERATED",
 
-    "PHYSICAL_VERIFICATION_PENDING",
-    "DOCUMENTS_VERIFIED",
-    "DOCUMENTS_FAILED",   // ✅ ADD THIS
-
     "SEAT_ALLOTTED",
     "SEAT_ACCEPTED",
-
     "ADMITTED"
   ],
   default:"DRAFT"

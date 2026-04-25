@@ -15,14 +15,15 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import ManageUsers from "./pages/admin/manage-users";
 import CreateUser from "./pages/admin/SeatManage";
 import AdminAdmissionControl from "./pages/admin/AdminAdmissionControl";
-
+import ExamQuestion from "./pages/admin/ExamQuestions";
+import ExamControl from "./pages/admin/ExamControl";
 // ================= STUDENT =================
 import StudentDashboard from "./pages/student/StudentDashboard";
 import AdmissionForm from "./pages/student/AdmissionForm";
+import ExamPage from "./pages/student/ExamPage";
 
 // ================= VERIFICATION =================
 import VerifyApplications from "./pages/verification/VerifyApplications";
-import PhysicalVerification from "./pages/verification/PhysicalVerification";
 import GenerateMerit from "./pages/verification/GenerateMerit";
 import FinalApproval from "./pages/verification/FinalApproval";
 import MeritList from "./pages/verification/MeritList";
@@ -57,6 +58,8 @@ export default function App() {
           <Route path="manage-users" element={<ManageUsers />} />
           <Route path="s-manage" element={<CreateUser />} />
           <Route path="admission-control" element={<AdminAdmissionControl />} />
+          <Route path="exam-questions" element={<ExamQuestion />} />
+<Route path="exam-control" element={<ExamControl />} />
         </Route>
 
         {/* ===== STUDENT ===== */}
@@ -77,6 +80,14 @@ export default function App() {
             </RequireRole>
           }
         />
+        <Route
+          path="/student/exam"
+          element={
+            <RequireRole allowedRoles={["student"]}>
+              <ExamPage />
+            </RequireRole>
+          }
+        />
 
         {/* ===== VERIFICATION OFFICER ===== */}
         <Route
@@ -88,14 +99,7 @@ export default function App() {
           }
         />
 
-        <Route
-          path="/verification/physical"
-          element={
-            <RequireRole allowedRoles={["verification_officer"]}>
-              <PhysicalVerification />
-            </RequireRole>
-          }
-        />
+        
 
         <Route
           path="/verification/merit"

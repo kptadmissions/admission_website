@@ -25,9 +25,6 @@ export default function VerificationNavbar() {
           <Link to="/verification" className={active("/verification")}>
             Verify Applications
           </Link>
-          <Link to="/verification/physical" className={active("/verification/physical")}>
-            Physical Verification
-          </Link>
           <Link to="/verification/merit" className={active("/verification/merit")}>
             Generate Merit
           </Link>

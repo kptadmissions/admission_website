@@ -13,7 +13,9 @@ import {
   Award, 
   ArrowRight,
   Info,
-  Check
+  Check,
+  User,
+  GraduationCap
 } from "lucide-react";
 import { motion } from "framer-motion";
 import FullPageLoader from "../../components/FullPageLoader";
@@ -115,25 +117,24 @@ export default function StudentDashboard() {
 
   if (loading) return <FullPageLoader label="Loading Student Dashboard..." />;
 
-  // MERIT_GENERATED removed from valid acknowledgement statuses
   const showAcknowledgementStatuses = [
-    "SUBMITTED", 
-    "VERIFIED", 
-    "PHYSICAL_VERIFICATION_PENDING", 
-    "DOCUMENTS_VERIFIED", 
-    "SEAT_ALLOTTED", 
-    "SEAT_ACCEPTED", 
+    "SUBMITTED",
+    "UNDER_VERIFICATION",
+    "VERIFIED",
+    "MERIT_GENERATED",
+    "SEAT_ALLOTTED",
+    "SEAT_ACCEPTED",
     "ADMITTED"
   ];
 
   const getStatusStyles = (status) => {
-    if (["DOCUMENTS_VERIFIED", "ADMITTED", "SEAT_ACCEPTED"].includes(status)) {
+    if (["VERIFIED", "ADMITTED", "SEAT_ACCEPTED"].includes(status)) {
       return "text-emerald-700 bg-emerald-100/80 border-emerald-200/50";
     }
     if (status === "REJECTED" || status === "CORRECTION_REQUIRED") {
       return "text-red-700 bg-red-100/80 border-red-200/50";
     }
-    if (status === "PHYSICAL_VERIFICATION_PENDING") {
+    if (status === "UNDER_VERIFICATION") {
       return "text-amber-700 bg-amber-100/80 border-amber-200/50";
     }
     return "text-indigo-700 bg-indigo-100/80 border-indigo-200/50";
@@ -225,77 +226,121 @@ export default function StudentDashboard() {
           )}
 
           {/* Application Details & Status */}
-          <div className="bg-white/80 backdrop-blur-lg p-8 rounded-2xl shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-8 hover:shadow-md transition-shadow duration-300">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            {/* Left Col: Details */}
-            <div className="space-y-5">
-              <div className="flex items-center gap-2 mb-2">
-                <Info size={18} className="text-indigo-500" />
-                <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Application Information</p>
-              </div>
-              
-              <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-100 space-y-4">
-                <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 font-medium mb-1">Application ID</span>
-                  <span className="font-bold text-gray-800 text-lg font-mono">
-                    {application.applicationId || application._id.slice(-8).toUpperCase()}
-                  </span>
+            {/* Left Col: Details & Category Card */}
+            <div className="space-y-6">
+              <div className="bg-white/80 backdrop-blur-lg p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-300">
+                <div className="flex items-center gap-2 mb-4">
+                  <Info size={18} className="text-indigo-500" />
+                  <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Application Info</p>
                 </div>
-                
-                <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 font-medium mb-1">Admission Type</span>
-                  <span className="font-semibold text-gray-700">
-                    {application.admissionType || "Regular"}
-                  </span>
+                <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-100 space-y-4">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-gray-500 font-medium mb-1">Application ID</span>
+                    <span className="font-bold text-gray-800 text-lg font-mono">
+                      {application.applicationId || application._id.slice(-8).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-gray-500 font-medium mb-1">Admission Type</span>
+                    <span className="font-semibold text-gray-700">
+                      {application.admissionType || "Regular"}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Right Col: Status & Merit */}
-            <div className="space-y-5">
-              <div className="flex items-center gap-2 mb-2">
-                <CheckCircle size={18} className="text-indigo-500" />
-                <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Current Status</p>
               </div>
 
-              <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-100/50 space-y-5">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div className="flex flex-col gap-2">
-                    <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Application State</span>
-                    <div className={`px-4 py-1.5 rounded-lg inline-flex w-fit font-bold border shadow-sm ${getStatusStyles(application.status)}`}>
-                      {
-                        {
-                          PHYSICAL_VERIFICATION_PENDING: "Rank Generated - Visit College",
-                          DOCUMENTS_VERIFIED: "Verification Completed",
-                          SEAT_ALLOTTED: "Seat Allotted",
-                          SEAT_ACCEPTED: "Seat Accepted"
-                        }[application.status] || application.status.replace(/_/g, " ")
-                      }
+              {/* CATEGORY DISPLAY CARD */}
+              {application.categoryDetails && (
+                <div className="bg-white/80 backdrop-blur-lg p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-300">
+                  <div className="flex items-center gap-2 mb-4">
+                    <User size={18} className="text-indigo-500" />
+                    <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Reservation Details</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-gray-400 font-bold uppercase">Category</span>
+                      <span className="font-bold text-indigo-700">{application.categoryDetails.category || "GM"}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-gray-400 font-bold uppercase">Kannada</span>
+                      <span className="font-bold text-gray-700">{application.categoryDetails.isKannadaMedium ? "Yes" : "No"}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-gray-400 font-bold uppercase">Rural</span>
+                      <span className="font-bold text-gray-700">{application.categoryDetails.isRural ? "Yes" : "No"}</span>
                     </div>
                   </div>
-                  
-                  <div className="flex flex-col gap-2 items-start md:items-end">
-                    <span className="text-xs text-purple-400 font-bold uppercase tracking-wider">Rank & Score</span>
-                    {(application.meritScore || application.meritRank) ? (
-                      <div className="flex items-center gap-1.5 bg-gradient-to-r from-purple-100 to-fuchsia-100 text-purple-800 px-4 py-1.5 rounded-lg font-extrabold border border-purple-200 shadow-sm">
-                        <Award size={16} className="text-purple-600" />
-                        {application.meritRank && <span>Rank: {application.meritRank}</span>}
-                        {application.meritRank && application.meritScore && <span className="mx-1 opacity-50">|</span>}
-                        {application.meritScore && <span>Score: {application.meritScore}</span>}
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-500 italic bg-gray-100/80 px-3 py-1.5 rounded-lg border border-gray-200">
-                        Rank not generated yet
-                      </span>
-                    )}
-                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right Col: Status & Rank/Exam Results */}
+            <div className="bg-white/80 backdrop-blur-lg p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-300 flex flex-col justify-between">
+              <div className="space-y-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle size={18} className="text-indigo-500" />
+                  <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Current Status</p>
                 </div>
 
-                <div className="pt-3 border-t border-gray-200">
-                  <p className="text-sm text-gray-700 flex items-start gap-2 font-medium">
-                    <span className="mt-0.5 text-indigo-500"><Info size={16} /></span>
-                    {nextStepMessage(application.status)}
-                  </p>
+                <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-100/50 space-y-5">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex flex-col gap-2">
+                      <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Application State</span>
+                      <div className={`px-4 py-1.5 rounded-lg inline-flex w-fit font-bold border shadow-sm ${getStatusStyles(application.status)}`}>
+                        {
+                          {
+                            UNDER_VERIFICATION: "Under Verification",
+                            VERIFIED: "Verified",
+                            MERIT_GENERATED: "Rank Generated",
+                            SEAT_ALLOTTED: "Seat Allotted",
+                            SEAT_ACCEPTED: "Seat Accepted",
+                            ADMITTED: "Admission Completed"
+                          }[application.status] || application.status.replace(/_/g, " ")
+                        }
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col gap-2 items-start md:items-end">
+                      <span className="text-xs text-purple-400 font-bold uppercase tracking-wider">Merit Rank</span>
+                      {application.meritRank ? (
+                        <div className="flex items-center gap-1.5 bg-gradient-to-r from-purple-100 to-fuchsia-100 text-purple-800 px-4 py-1.5 rounded-lg font-extrabold border border-purple-200 shadow-sm">
+                          <Award size={16} className="text-purple-600" />
+                          <span>Rank: {application.meritRank}</span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-500 italic bg-gray-100/80 px-3 py-1.5 rounded-lg border border-gray-200">
+                          Waiting for Rank
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* EXAM RESULT DISPLAY */}
+                  {application.examDetails && (
+                    <div className="pt-4 border-t border-dashed border-gray-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <GraduationCap size={14} className="text-indigo-400" />
+                        <span className="text-[10px] text-gray-400 font-bold uppercase">Entrance Exam Result</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm font-semibold text-gray-600">
+                          Score: <span className="text-indigo-600">{application.examDetails.score} / {application.examDetails.totalQuestions}</span>
+                        </p>
+                        <p className="text-sm font-semibold text-gray-600">
+                          Percentage: <span className="text-indigo-600">{application.examDetails.percentage}%</span>
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-3 border-t border-gray-200">
+                    <p className="text-sm text-gray-700 flex items-start gap-2 font-medium">
+                      <span className="mt-0.5 text-indigo-500"><Info size={16} /></span>
+                      {nextStepMessage(application.status)}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -386,25 +431,25 @@ export default function StudentDashboard() {
 function nextStepMessage(s) {
   return {
     "DRAFT": "Complete your application form.",
-    "SUBMITTED": "Your application is submitted and under review.",
-    "CORRECTION_REQUIRED": "Please correct and resubmit your application.",
-    "VERIFIED": "Application verified. Preparing merit rank.",
-    "PHYSICAL_VERIFICATION_PENDING": "Your rank is generated. Visit college for physical document verification.",
-    "DOCUMENTS_VERIFIED": "Documents verified successfully. Wait for seat allotment.",
-    "SEAT_ALLOTTED": "Seat allotted. Accept or reject your seat.",
-    "SEAT_ACCEPTED": "Seat accepted. Admission process will complete soon.",
-    "ADMITTED": "Congratulations! Admission completed.",
-    "REJECTED": "Application rejected."
+    "SUBMITTED": "Application submitted, waiting for verification.",
+    "UNDER_VERIFICATION": "Your application is under verification.",
+    "VERIFIED": "Verification completed, preparing merit.",
+    "MERIT_GENERATED": "Rank generated, wait for seat allotment.",
+    "SEAT_ALLOTTED": "Seat allotted, take action.",
+    "SEAT_ACCEPTED": "Seat accepted, admission processing.",
+    "ADMITTED": "Admission completed.",
+    "REJECTED": "Application rejected.",
+    "CORRECTION_REQUIRED": "Fix and resubmit."
   }[s] || "Application is currently processing.";
 }
 
 function getProgressSteps(currentStatus) {
   const stepsDef = [
     { id: "SUBMITTED", label: "Submitted" },
+    { id: "UNDER_VERIFICATION", label: "Verification" },
     { id: "VERIFIED", label: "Verified" },
-    { id: "PHYSICAL_VERIFICATION_PENDING", label: "Rank" },
-    { id: "DOCUMENTS_VERIFIED", label: "Verification" },
-    { id: "SEAT_ALLOTTED", label: "Seat" }, // Merged SEAT_ACCEPTED logically here for UI
+    { id: "MERIT_GENERATED", label: "Rank" },
+    { id: "SEAT_ALLOTTED", label: "Seat" },
     { id: "ADMITTED", label: "Admission" }
   ];
 
@@ -412,9 +457,9 @@ function getProgressSteps(currentStatus) {
     "DRAFT": -1,
     "SUBMITTED": 0,
     "CORRECTION_REQUIRED": 0,
-    "VERIFIED": 1,
-    "PHYSICAL_VERIFICATION_PENDING": 2,
-    "DOCUMENTS_VERIFIED": 3,
+    "UNDER_VERIFICATION": 1,
+    "VERIFIED": 2,
+    "MERIT_GENERATED": 3,
     "SEAT_ALLOTTED": 4,
     "SEAT_ACCEPTED": 4, 
     "ADMITTED": 5,

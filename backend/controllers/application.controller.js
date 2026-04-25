@@ -1,4 +1,9 @@
 import Application from "../models/application.model.js";
+import { sendEmail } from "../utils/sendEmail.js";
+import {
+  applicationSubmittedTemplate,
+  applicationResubmittedTemplate
+} from "../utils/emailTemplates.js";
 
 /* =====================================================
  CREATE OR SUBMIT APPLICATION
@@ -9,15 +14,13 @@ export const createApplication = async (req, res) => {
     const clerkUserId = req.clerkUserId;
     const year = req.body.admissionYear || "2025-26";
 
-    // Check if application already exists for this year
     let application = await Application.findOne({
       studentClerkId: clerkUserId,
-      admissionYear: year,
+      admissionYear: year
     });
 
-    // Block re-submit after final submit
     if (application && application.status === "VERIFIED") {
-      return res.status(400).json({ message: "Application already submitted" });
+      return res.status(400).json({ message: "Application already verified" });
     }
 
     const {
@@ -27,24 +30,50 @@ export const createApplication = async (req, res) => {
       categoryDetails,
       branchPreferences,
       documents,
+      studyDetails
     } = req.body;
 
-    /* -------------------------
-       SANITIZE NUMBERS
-    ------------------------- */
+    /* =========================
+       VALIDATION
+    ========================= */
+
+    if (!personalDetails?.name || !personalDetails?.mobile) {
+      return res.status(400).json({ message: "Missing personal details" });
+    }
+
+    if (!studyDetails || studyDetails.length !== 10) {
+      return res.status(400).json({ message: "Study details must be 10 rows" });
+    }
+
+    /* =========================
+       SANITIZE DATA
+    ========================= */
 
     const sanitizedAcademicDetails = {
       ...academicDetails,
-      sslcMaxMarks: Number(academicDetails.sslcMaxMarks),
-      sslcObtainedMarks: Number(academicDetails.sslcObtainedMarks),
-      itiPucMaxMarks: Number(academicDetails.itiPucMaxMarks),
-      itiPucObtainedMarks: Number(academicDetails.itiPucObtainedMarks),
+      sslcMaxMarks: Number(academicDetails.sslcMaxMarks || 0),
+      sslcObtainedMarks: Number(academicDetails.sslcObtainedMarks || 0),
+      itiPucMaxMarks: Number(academicDetails.itiPucMaxMarks || 0),
+      itiPucObtainedMarks: Number(academicDetails.itiPucObtainedMarks || 0),
     };
 
     const sanitizedCategoryDetails = {
       ...categoryDetails,
-      annualIncome: Number(categoryDetails.annualIncome),
+      annualIncome: Number(categoryDetails.annualIncome || 0),
     };
+
+    const sanitizedStudyDetails = studyDetails.map((row) => ({
+      level: row.level,
+      academicYear: row.academicYear,
+      schoolName: row.schoolName,
+      district: row.district,
+      state: row.state,
+      source: row.source || "MANUAL"
+    }));
+
+    /* =========================
+       PREPARE DATA
+    ========================= */
 
     const updateData = {
       admissionType,
@@ -53,25 +82,46 @@ export const createApplication = async (req, res) => {
       categoryDetails: sanitizedCategoryDetails,
       branchPreferences,
       documents,
+      studyDetails: sanitizedStudyDetails,
       status: "SUBMITTED",
       studentClerkId: clerkUserId,
       admissionYear: year,
     };
 
+    let isNew = false;
+
     if (application) {
-      // Update existing application
       application.set(updateData);
       await application.save();
-      return res.status(200).json({ message: "Application Updated", application });
     } else {
-      // Create new application
       application = new Application(updateData);
       await application.save();
-      return res.status(201).json({ message: "Application Created", application });
+      isNew = true;
     }
 
+    /* =========================
+       EMAIL
+    ========================= */
+
+    if (application.personalDetails?.email) {
+      try {
+        await sendEmail({
+          to: application.personalDetails.email,
+          subject: "Application Submitted Successfully",
+          html: applicationSubmittedTemplate(application.personalDetails.name),
+        });
+      } catch (err) {
+        console.error("Email error:", err.message);
+      }
+    }
+
+    return res.status(isNew ? 201 : 200).json({
+      message: isNew ? "Application Created" : "Application Updated",
+      application,
+    });
+
   } catch (err) {
-    console.error("❌ Submission Error:", err);
+    console.error("Submission Error:", err);
     res.status(500).json({ message: err.message || "Submission failed" });
   }
 };
@@ -90,14 +140,15 @@ export const getMyApplication = async (req, res) => {
     });
 
     res.json({ application: app });
+
   } catch (err) {
-    console.error("❌ Fetch Error:", err);
+    console.error("Fetch Error:", err);
     res.status(500).json({ message: "Failed to fetch application" });
   }
 };
 
 /* =====================================================
- UPDATE AFTER CORRECTION REQUIRED
+ UPDATE AFTER CORRECTION
 ===================================================== */
 
 export const updateMyApplication = async (req, res) => {
@@ -106,13 +157,14 @@ export const updateMyApplication = async (req, res) => {
       studentClerkId: req.clerkUserId,
     });
 
-    if (!app)
+    if (!app) {
       return res.status(404).json({ message: "Application not found" });
+    }
 
-    // SAFER STATUS CHECK
-if (!["CORRECTION_REQUIRED","DRAFT"].includes(app.status)) {
-  return res.status(403).json({ message: "Edit not allowed" });
-}
+    if (!["CORRECTION_REQUIRED", "DRAFT"].includes(app.status)) {
+      return res.status(403).json({ message: "Edit not allowed" });
+    }
+
     const {
       admissionType,
       admissionYear,
@@ -120,42 +172,75 @@ if (!["CORRECTION_REQUIRED","DRAFT"].includes(app.status)) {
       academicDetails,
       categoryDetails,
       branchPreferences,
-      documents
+      documents,
+      studyDetails
     } = req.body;
+
+    /* =========================
+       SANITIZE
+    ========================= */
 
     const sanitizedAcademicDetails = {
       ...academicDetails,
-      sslcMaxMarks: Number(academicDetails.sslcMaxMarks),
-      sslcObtainedMarks: Number(academicDetails.sslcObtainedMarks),
-      itiPucMaxMarks: Number(academicDetails.itiPucMaxMarks),
-      itiPucObtainedMarks: Number(academicDetails.itiPucObtainedMarks),
+      sslcMaxMarks: Number(academicDetails.sslcMaxMarks || 0),
+      sslcObtainedMarks: Number(academicDetails.sslcObtainedMarks || 0),
+      itiPucMaxMarks: Number(academicDetails.itiPucMaxMarks || 0),
+      itiPucObtainedMarks: Number(academicDetails.itiPucObtainedMarks || 0),
     };
 
     const sanitizedCategoryDetails = {
       ...categoryDetails,
-      annualIncome: Number(categoryDetails.annualIncome),
+      annualIncome: Number(categoryDetails.annualIncome || 0),
     };
+
+    const sanitizedStudyDetails = (studyDetails || []).map((row) => ({
+      level: row.level,
+      academicYear: row.academicYear,
+      schoolName: row.schoolName,
+      district: row.district,
+      state: row.state,
+      source: row.source || "MANUAL"
+    }));
+
+    /* =========================
+       UPDATE
+    ========================= */
 
     app.personalDetails = personalDetails;
     app.academicDetails = sanitizedAcademicDetails;
     app.categoryDetails = sanitizedCategoryDetails;
     app.branchPreferences = branchPreferences;
     app.documents = documents;
+    app.studyDetails = sanitizedStudyDetails;
 
-    // IMPORTANT
     app.admissionType = admissionType;
     app.admissionYear = admissionYear || app.admissionYear;
 
-    // RESET STATUS
     app.status = "SUBMITTED";
     app.remarks = "";
 
     await app.save();
 
-    res.json({ message: "Application updated successfully" });
+    /* =========================
+       EMAIL
+    ========================= */
+
+    if (app.personalDetails?.email) {
+      try {
+        await sendEmail({
+          to: app.personalDetails.email,
+          subject: "Application Resubmitted",
+          html: applicationResubmittedTemplate(app.personalDetails.name),
+        });
+      } catch (err) {
+        console.error("Resubmit Email error:", err.message);
+      }
+    }
+
+    res.json({ message: "Application resubmitted successfully" });
 
   } catch (err) {
-    console.error("❌ Update Error:", err);
+    console.error("Update Error:", err);
     res.status(500).json({ message: err.message || "Update failed" });
   }
 };

@@ -1,81 +1,223 @@
 import Application from "../models/application.model.js";
+import ExamResult from "../models/ExamResult.js";
 import AdmissionSettings from "../models/AdmissionSettings.js";
 
-// ✅ UPDATED: Handles Status Filtering & Search
+/* =====================================================
+   VERIFY APPLICATION (FINAL FIXED)
+===================================================== */
+export const verifyApplication = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { failedDocs = [], remarks } = req.body;
+
+    const app = await Application.findById(id);
+    if (!app) return res.status(404).json({ message: "Application not found" });
+
+    /* =========================
+       CRITICAL DOCUMENTS
+    ========================= */
+    const criticalDocs = [
+      "sslcMarksCard",
+      "aadhaarCard",
+      "transferCertificate",
+      "studyCertificate"
+    ];
+
+    /* =========================
+       1. CHECK CRITICAL FAIL
+    ========================= */
+    const hasCriticalFail = failedDocs.some(doc =>
+      criticalDocs.includes(doc)
+    );
+
+    if (hasCriticalFail) {
+      app.status = "REJECTED";
+      app.remarks = remarks || "Missing critical documents";
+
+      app.verification = {
+        verifiedBy: req.user?.id || "officer",
+        verifiedAt: new Date(),
+        remarks
+      };
+
+      await app.save();
+
+      return res.json({
+        success: true,
+        status: "REJECTED",
+        message: "Application rejected"
+      });
+    }
+
+    /* =========================
+       2. NON-CRITICAL FAIL
+    ========================= */
+    if (failedDocs.length > 0) {
+      app.status = "CORRECTION_REQUIRED";
+      app.remarks = remarks || "Please correct the marked issues";
+
+      await app.save();
+
+      return res.json({
+        success: true,
+        status: "CORRECTION_REQUIRED",
+        message: "Correction required"
+      });
+    }
+
+    /* =========================
+       3. CHECK EXAM
+    ========================= */
+    const exam = await ExamResult.findOne({
+      email: app.personalDetails.email
+    });
+
+    if (!exam) {
+      app.status = "CORRECTION_REQUIRED";
+      app.remarks = "Entrance test not completed";
+
+      await app.save();
+
+      return res.json({
+        success: false,
+        status: "CORRECTION_REQUIRED",
+        examRequired: true,
+        message: "Exam not completed"
+      });
+    }
+
+    /* =========================
+       4. SAVE EXAM DETAILS
+    ========================= */
+    const percentage = exam.totalQuestions
+      ? (exam.score / exam.totalQuestions) * 100
+      : 0;
+
+    app.examDetails = {
+      attended: true,
+      score: exam.score,
+      totalQuestions: exam.totalQuestions,
+      percentage: Number(percentage.toFixed(2))
+    };
+
+    /* =========================
+       5. FINAL VERIFIED
+    ========================= */
+    app.status = "VERIFIED";
+    app.remarks = remarks || "Verified successfully";
+
+    app.verification = {
+      verifiedBy: req.user?.id || "officer",
+      verifiedAt: new Date(),
+      remarks
+    };
+
+    await app.save();
+
+    return res.json({
+      success: true,
+      status: "VERIFIED",
+      message: "Application verified successfully"
+    });
+
+  } catch (err) {
+    console.error("VERIFY ERROR:", err);
+    res.status(500).json({ message: "Verification failed" });
+  }
+};
+
+
+/* =====================================================
+   GET APPLICATIONS (FILTER + SEARCH)
+===================================================== */
 export const getApplications = async (req, res) => {
   try {
     const { status, search } = req.query;
 
-    // ⭐ GET ACTIVE ADMISSION TYPE
+    /* =========================
+       GET ACTIVE ADMISSION TYPE
+    ========================= */
     const settings = await AdmissionSettings.findOne();
 
-    let admissionType = null;
-
+    let admissionType = "NORMAL";
     if (settings?.normalActive) admissionType = "NORMAL";
     if (settings?.lateralActive) admissionType = "LATERAL";
 
-    // If nothing active, return empty
-    if (!admissionType) {
-      return res.json({ applications: [] });
-    }
+    let query = { admissionType };
 
-    // BASE QUERY
-    let query = {
-      admissionType // 🔥 THIS IS THE MAGIC
-    };
-
-    // Status filter
+    /* =========================
+       STATUS FILTER
+    ========================= */
     if (status && status !== "ALL") {
       query.status = status;
     }
 
-    // Search
+    /* =========================
+       SEARCH
+    ========================= */
     if (search) {
       query.$or = [
         { "personalDetails.name": { $regex: search, $options: "i" } },
         { "personalDetails.mobile": { $regex: search, $options: "i" } },
+        { "personalDetails.email": { $regex: search, $options: "i" } },
         { "academicDetails.sslcRegisterNumber": { $regex: search, $options: "i" } },
-        { studentClerkId: { $regex: search, $options: "i" } },
       ];
     }
 
-    const applications = await Application
-      .find(query)
-      .sort({ updatedAt: -1 });
+    const apps = await Application.find(query).sort({ updatedAt: -1 });
+
+    /* =========================
+       CLEAN + ATTACH EXAM
+    ========================= */
+    const applications = await Promise.all(
+      apps.map(async (app) => {
+        const obj = app.toObject();
+
+        // Remove empty docs
+        const cleanedDocs = {};
+        for (const key in obj.documents || {}) {
+          if (obj.documents[key]) {
+            cleanedDocs[key] = obj.documents[key];
+          }
+        }
+        obj.documents = cleanedDocs;
+
+        // Attach exam
+        const exam = await ExamResult.findOne({
+          email: obj.personalDetails.email,
+        });
+
+        if (exam) {
+          const percentage = exam.totalQuestions
+            ? (exam.score / exam.totalQuestions) * 100
+            : 0;
+
+          obj.examDetails = {
+            attended: true,
+            score: exam.score,
+            totalQuestions: exam.totalQuestions,
+            percentage: Number(percentage.toFixed(2)),
+          };
+        } else {
+          obj.examDetails = null;
+        }
+
+        return obj;
+      })
+    );
 
     res.json({ applications });
 
-  } catch (error) {
-    console.error("Error fetching applications:", error);
-    res.status(500).json({ message: "Server Error" });
+  } catch (err) {
+    console.error("GET APPLICATION ERROR:", err);
+    res.status(500).json({ message: "Error fetching applications" });
   }
 };
 
-// ✅ KEEP: This remains the same
-export const verifyApplication = async (req, res) => {
-  const { id } = req.params;
-  const { status, remarks } = req.body;
 
-  if (!["VERIFIED", "REJECTED", "CORRECTION_REQUIRED", "SUBMITTED"].includes(status)) {
-    return res.status(400).json({ message: "Invalid status" });
-  }
-
-  const app = await Application.findById(id);
-  if (!app) return res.status(404).json({ message: "Not found" });
-
-  // Allow re-verification or status change for flexibility
-  app.status = status;
-  app.remarks = remarks || "";
-  
-  // If verifying, you might want to mark physicalVerification as pending
-  if(status === "VERIFIED") {
-      app.physicalVerification.verified = null; 
-  }
-
-  await app.save();
-  res.json({ message: `Application updated to ${status}` });
-};
-
+/* =====================================================
+   OFFICER DASHBOARD STATS
+===================================================== */
 export const getOfficerStats = async (req, res) => {
   try {
     const settings = await AdmissionSettings.findOne();
@@ -97,15 +239,13 @@ export const getOfficerStats = async (req, res) => {
       verified,
       rejected,
       correctionRequired,
-      physicallyVerified,
-      finalAdmitted
+      admitted
     ] = await Promise.all([
       Application.countDocuments(base),
       Application.countDocuments({ ...base, status: "SUBMITTED" }),
       Application.countDocuments({ ...base, status: "VERIFIED" }),
       Application.countDocuments({ ...base, status: "REJECTED" }),
       Application.countDocuments({ ...base, status: "CORRECTION_REQUIRED" }),
-      Application.countDocuments({ ...base, status: "DOCUMENTS_VERIFIED" }),
       Application.countDocuments({ ...base, status: "ADMITTED" })
     ]);
 
@@ -115,8 +255,7 @@ export const getOfficerStats = async (req, res) => {
       verified,
       rejected,
       correctionRequired,
-      physicallyVerified,
-      finalAdmitted
+      admitted
     });
 
   } catch (error) {
