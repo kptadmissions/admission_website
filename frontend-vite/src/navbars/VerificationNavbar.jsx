@@ -1,3 +1,4 @@
+// path: frontend-vite/src/navbars/VerificationNavbar.jsx
 import { Link, useLocation } from "react-router-dom";
 import { UserButton } from "@clerk/clerk-react";
 import logo from "/logo.jpg";
@@ -22,7 +23,16 @@ export default function VerificationNavbar() {
          <Link to="/verification/dashboard" className={active("/verification/dashboard")}>
             Dashboard
           </Link>
-          <Link to="/verification" className={active("/verification")}>
+          <Link to="/verification/applicationform" className={active("/verification/applicationform")}>
+            Application Form
+          </Link>
+          <Link to="/Verification/update" className={active("/verification/update")}>
+            Update Application
+          </Link>
+          <Link to="/verification/acknowledgement" className={active("/verification/acknowledgement")}>
+            Acknowledgement
+          </Link>
+          {/* <Link to="/verification" className={active("/verification")}>
             Verify Applications
           </Link>
           <Link to="/verification/merit" className={active("/verification/merit")}>
@@ -36,7 +46,7 @@ export default function VerificationNavbar() {
           </Link>
           <Link to="/verification/final" className={active("/verification/final")}>
             Final Approval
-          </Link>
+          </Link> */}
 
           <UserButton afterSignOutUrl="/" />
         </div>

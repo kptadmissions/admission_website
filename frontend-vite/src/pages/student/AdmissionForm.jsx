@@ -1,27 +1,20 @@
-import { useEffect, useState, useRef } from "react";
-import { useAuth, useUser } from "@clerk/clerk-react";
+import { useEffect, useState } from "react";
+import { useAuth } from "@clerk/clerk-react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { 
-  User, MapPin, BookOpen, Layers, CheckCircle, AlertCircle, Camera, Upload, Image as ImageIcon, FileText, XCircle
+  User, MapPin, BookOpen, Layers, CheckCircle, AlertCircle, XCircle
 } from "lucide-react"; 
 import FullPageLoader from "../../components/FullPageLoader";
 
 // --- CONFIGURATION ---
-const BRANCHES = [
-  { code: "CE", label: "Civil Engineering" },
-  { code: "ME", label: "Mechanical Engineering" },
-  { code: "EEE", label: "Electrical & Electronics Engineering (EEE)" },
-  { code: "ECE", label: "Electronics & Communication Engineering (ECE)" },
-  { code: "CSE", label: "Computer Science & Engineering (CSE)" },
-  { code: "AE", label: "Automobile Engineering (AE)" },
-  { code: "ChE", label: "Chemical Engineering (ChE)" },
-  { code: "Poly", label: "Polymer Technology (Poly)" }
-];
-
 const RELIGIONS = ["Hindu", "Muslim", "Christian", "Sikh", "Jain", "Buddhist", "Parsi", "Other"];
-const MOTHER_TONGUES = ["Kannada", "Tulu", "Arebase", "English", "Hindi", "Malayalam", "Tamil", "Konnani", "Telugu"];
-const NATIONALITIES = ["Indian", "Other"];
+const CATEGORIES = ["GM", "SC", "ST", "C-1", "2A", "2B", "3A", "3B"];
+const EXEMPTION_CLAUSES = ["A", "B", "C", "D", "E", "F", "G"];
+const SPECIAL_CATEGORIES_LIST = ["JTS", "JOC", "EDP", "DP", "PS", "SP", "SG", "AI", "CI", "GK", "ITI", "NCC", "PH"];
+
+const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
+const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
 
 const STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana",
@@ -41,41 +34,44 @@ const KARNATAKA_DISTRICTS = [
 ];
 
 const EMPTY_FORM = {
-  admissionType: "", 
-  personalDetails: {
-    name: "", fatherName: "", motherName: "", dob: "", gender: "",
-    religion: "", caste: "", nationality: "Indian", aadharNumber: "",
-    satsNumber: "", address: "", district: "", state: "Karnataka",
-    pincode: "", mobile: "", email: "", photo: "", 
-    motherTongue: "", nativeState: "", nativeDistrict: "",
+  basicDetails: {
+    satsNumber: "", aadharNumber: "", name: "", motherName: "", fatherName: "",
+    dob: "", gender: "", nationality: "Yes", religion: ""
   },
-  academicDetails: {
-    board: "SSLC", sslcRegisterNumber: "", sslcPassingYear: "",
-    sslcMaxMarks: "", sslcObtainedMarks: "", sslcPercentage: "",
-    sslcMathsMarks: "", sslcScienceMarks: "",
-    qualifyingExam: "", 
-    itiTrade: "", yearsStudiedInKarnataka: "", stateAppearedForQualifyingExam: "",
-    itiPucRegisterNumber: "", itiPucPassingYear: "",
-    itiPucMaxMarks: "", itiPucObtainedMarks: "", itiPucPercentage: "",
+  qualifyingDetails: {
+    qualifyingExam: "", nativeState: "Karnataka", nativeDistrict: ""
+  },
+  studyEligibility: {
+    stateAppearedForQualifyingExam: "Karnataka", yearsStudiedInKarnataka: "",
+    isRural: "No", isKannadaMedium: "No"
+  },
+  exemptionClaims: {
+    isFiveYearExemption: "No", exemptionClause: "",
+    isHyderabadKarnataka: "No", isSNQ: "No"
+  },
+  specialCategory: {
+    JTS: false, JOC: false, EDP: false, DP: false, PS: false, SP: false, SG: false,
+    AI: false, CI: false, GK: false, ITI: false, NCC: false, PH: false
+  },
+  shiftDetails: {
+    shiftType: "Day Shift", experienceYears: "", experienceMonths: "", serviceCertificate: "No"
   },
   categoryDetails: {
-    category: "GM", casteName: "", annualIncome: "",
-    isRural: false, isKannadaMedium: false, isStudyCertificateExempt: false,
+    category: "GM", casteName: "", annualIncome: ""
   },
-  branchPreferences: [],
-  studyDetails: Array.from({ length: 10 }, (_, i) => ({
-    level: `STD_${i + 1}`,
-    academicYear: "",
-    schoolName: "",
-    district: "",
-    state: "Karnataka",
-    source: "MANUAL"
-  })),
-  documents: { 
-    candidateSignature: "", parentSignature: "", sslcMarksCard: "",
-    itiMarksCard: "", pucMarksCard: "", aadhaarCard: "",
-    casteCertificate: "", incomeCertificate: "", ruralCertificate: "",
-    kannadaCertificate: "", studyExemptionCertificate: ""
+  contactDetails: {
+    mobile: "", parentMobile: "", email: "",
+    address: "", state: "Karnataka", district: "", pincode: ""
+  },
+  educationalParticulars: {
+    sslcRegisterNumber: "", sslcPassingYear: "",
+    sslcMaxMarks: "", sslcObtainedMarks: "",
+    maxScienceMarks: "", obtainedScienceMarks: "",
+    maxMathsMarks: "", obtainedMathsMarks: "",
+    totalMaxScienceMaths: "", totalObtainedScienceMaths: ""
+  },
+  declaration: {
+    candidateSignatureText: "", parentSignatureText: ""
   }
 };
 
@@ -91,7 +87,7 @@ const InputGroup = ({ id, name, label, value, onChange, type = "text", placehold
       id={id} name={name} type={type} value={value ?? ""} onChange={onChange}
       placeholder={placeholder} maxLength={maxLength} onPaste={onPaste} disabled={disabled}
       autoComplete="on"
-      className="border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-50"
+      className="border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-500"
     />
   </div>
 );
@@ -103,7 +99,7 @@ const SelectGroup = ({ id, name, label, value, onChange, options, disabled = fal
     </label>
     <select
       id={id} name={name} value={value ?? ""} onChange={onChange} disabled={disabled}
-      className="border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-50"
+      className="border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-500"
     >
       <option value="">Select</option>
       {options.map(o => <option key={o} value={o}>{o}</option>)}
@@ -123,136 +119,9 @@ const SectionHeader = ({ icon: Icon, title, subtitle }) => (
   </div>
 );
 
-const FormFieldWrapper = ({ label, children }) => (
-  <div className="flex flex-col">
-    <label className="text-xs font-bold mb-1 text-slate-500">{label}</label>
-    {children}
-  </div>
-);
-
-const Input = ({ className = "", ...props }) => (
-  <input
-    {...props}
-    className={`w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-50 ${className}`}
-  />
-);
-
-const Select = ({ options = [], className = "", ...props }) => (
-  <select
-    {...props}
-    className={`w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-50 ${className}`}
-  >
-    <option value="">Select</option>
-    {Array.isArray(options) &&
-      options.map((option) => (
-        <option key={option} value={option}>
-          {option}
-        </option>
-      ))}
-  </select>
-);
-
-const DocumentUpload = ({ id, name, label, value, onUpload, disabled, required = false, accept = "image/*" }) => {
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-  const { getToken } = useAuth();
-  
-  const isPdf = (value && value.toLowerCase().endsWith(".pdf")) || accept === "application/pdf";
-
-  const handleFile = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setErrorMsg("");
-
-    const isPdfUpload = accept === "application/pdf";
-    const maxSize = isPdfUpload ? 5 * 1024 * 1024 : 2 * 1024 * 1024; 
-    const typeErrorMsg = isPdfUpload ? `Invalid format. ${label} must be a PDF.` : `Invalid format. ${label} must be an Image (JPG/PNG).`;
-    const sizeErrorMsg = `File size exceeded. Max allowed is ${isPdfUpload ? "5MB" : "2MB"}.`;
-
-    if (isPdfUpload && file.type !== "application/pdf") {
-      setErrorMsg(typeErrorMsg); toast.error(typeErrorMsg); return;
-    }
-    if (!isPdfUpload && !file.type.startsWith("image/")) {
-      setErrorMsg(typeErrorMsg); toast.error(typeErrorMsg); return;
-    }
-    if (file.size > maxSize) {
-      setErrorMsg(sizeErrorMsg); toast.error(sizeErrorMsg); return;
-    }
-
-    setLoading(true);
-    try {
-      const token = await getToken();
-      const formData = new FormData();
-      formData.append("image", file); 
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/upload/image`, formData, { 
-        headers: { Authorization: `Bearer ${token}` } 
-      });
-      onUpload(res.data.url);
-      toast.success(`${label} uploaded!`);
-    } catch (err) {
-      const failMsg = `${label} upload failed.`;
-      setErrorMsg(failMsg); toast.error(failMsg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-2 p-4 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow">
-      <label htmlFor={id} className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest flex justify-between">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <div className={`relative group h-32 bg-slate-50 rounded border-2 border-dashed ${value ? 'border-green-300 bg-green-50' : 'border-slate-200'} flex flex-col items-center justify-center overflow-hidden transition-colors`}>
-        {value ? (
-          <>
-            {isPdf ? (
-              <div className="flex flex-col items-center text-red-600 cursor-pointer z-10" onClick={() => window.open(value, "_blank")}>
-                <FileText className="w-10 h-10 mb-2" />
-                <span className="text-[10px] font-bold uppercase text-slate-700">PDF Uploaded</span>
-                <span className="text-[10px] text-blue-600 underline mt-1 px-2 py-1 bg-white rounded shadow-sm hover:text-blue-800">View Document</span>
-              </div>
-            ) : (
-              <a href={value} target="_blank" rel="noreferrer" className="w-full h-full z-10 block">
-                <img src={value} alt={label} className="w-full h-full object-contain" />
-              </a>
-            )}
-            {!disabled && (
-               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity z-20 pointer-events-none">
-                 <Upload className="text-white w-6 h-6" />
-               </div>
-            )}
-          </>
-        ) : (
-          <div className="text-center pointer-events-none">
-            {accept === "application/pdf" ? <FileText className="w-8 h-8 text-slate-300 mx-auto" /> : <ImageIcon className="w-8 h-8 text-slate-300 mx-auto" />}
-            <span className="text-[10px] text-slate-400 font-bold uppercase mt-1 block">
-              {accept === "application/pdf" ? "Upload PDF" : "Upload Image"}
-            </span>
-          </div>
-        )}
-        {loading && (
-          <div className="absolute inset-0 bg-white/90 flex items-center justify-center z-30">
-            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        )}
-        {!disabled && !loading && (
-          <input id={id} name={name} type="file" onChange={handleFile} className="absolute inset-0 opacity-0 cursor-pointer z-40" accept={accept} />
-        )}
-      </div>
-      <div className="mt-1 flex flex-col">
-        {errorMsg && <span className="text-[10px] text-red-500 font-bold leading-tight mb-0.5">{errorMsg}</span>}
-        <span className="text-[10px] text-slate-500 font-semibold leading-tight">
-          {accept === "application/pdf" ? "PDF only \u2013 Max 5MB" : "Images only \u2013 Max 2MB"}
-        </span>
-      </div>
-    </div>
-  );
-};
-
 // --- MAIN COMPONENT ---
 export default function AdmissionForm() {
   const { getToken } = useAuth();
-  const { user } = useUser();
   
   const [admissionsClosed, setAdmissionsClosed] = useState(false);
   const [form, setForm] = useState(null);
@@ -262,16 +131,6 @@ export default function AdmissionForm() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [declarationChecked, setDeclarationChecked] = useState(false);
-  
-  const [rangeCtrl, setRangeCtrl] = useState({
-    from: 1, to: 10, schoolName: "", district: "", state: "Karnataka", academicYear: ""
-  });
-  
-  const [uploadingImg, setUploadingImg] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState("");
-  const [imageError, setImageError] = useState(false);
-  const [imageErrorMsg, setImageErrorMsg] = useState("");
-  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const fetchApplicationData = async () => {
@@ -280,11 +139,7 @@ export default function AdmissionForm() {
         const settingsRes = await axios.get(`${import.meta.env.VITE_API_URL}/admission/settings`);
         const { normalActive, lateralActive } = settingsRes.data;
 
-        let activeType = null;
-        if (normalActive) activeType = "NORMAL";
-        else if (lateralActive) activeType = "LATERAL";
-
-        if (!activeType) {
+        if (!normalActive && !lateralActive) {
           setAdmissionsClosed(true); setLoading(false); return;
         }
 
@@ -294,27 +149,30 @@ export default function AdmissionForm() {
 
         if (res.data.application) {
           const app = res.data.application;
-          if (app.personalDetails?.dob) app.personalDetails.dob = app.personalDetails.dob.split("T")[0];
+          if (app.basicDetails?.dob && app.basicDetails.dob.includes("T")) {
+            app.basicDetails.dob = app.basicDetails.dob.split("T")[0];
+          }
           const mergedForm = {
-            ...EMPTY_FORM, ...app, admissionType: app.admissionType || activeType,
-            personalDetails: { ...EMPTY_FORM.personalDetails, ...app.personalDetails },
-            academicDetails: { ...EMPTY_FORM.academicDetails, ...app.academicDetails },
+            ...EMPTY_FORM, ...app,
+            basicDetails: { ...EMPTY_FORM.basicDetails, ...app.basicDetails },
+            qualifyingDetails: { ...EMPTY_FORM.qualifyingDetails, ...app.qualifyingDetails },
+            studyEligibility: { ...EMPTY_FORM.studyEligibility, ...app.studyEligibility },
+            exemptionClaims: { ...EMPTY_FORM.exemptionClaims, ...app.exemptionClaims },
+            specialCategory: { ...EMPTY_FORM.specialCategory, ...app.specialCategory },
+            shiftDetails: { ...EMPTY_FORM.shiftDetails, ...app.shiftDetails },
             categoryDetails: { ...EMPTY_FORM.categoryDetails, ...app.categoryDetails },
-            documents: { ...EMPTY_FORM.documents, ...app.documents },
+            contactDetails: { ...EMPTY_FORM.contactDetails, ...app.contactDetails },
+            educationalParticulars: { ...EMPTY_FORM.educationalParticulars, ...app.educationalParticulars },
+            declaration: { ...EMPTY_FORM.declaration, ...app.declaration }
           };
           setForm(mergedForm);
-          if (app.personalDetails?.photo) setPreviewUrl(app.personalDetails.photo);
           setStatus(app.status); setRemarks(app.remarks || "");
           setEditable(["NEW", "DRAFT", "CORRECTION_REQUIRED"].includes(app.status));
           if (app.status !== "NEW" && app.status !== "DRAFT") setDeclarationChecked(true);
         } else {
           const initialForm = JSON.parse(JSON.stringify(EMPTY_FORM));
-          initialForm.admissionType = activeType;
-          if(user) {
-             initialForm.personalDetails.email = user.primaryEmailAddress?.emailAddress || "";
-             initialForm.personalDetails.name = user.fullName || "";
-          }
-          setForm(initialForm); setEditable(true);
+          setForm(initialForm); 
+          setEditable(true);
         }
       } catch (error) {
         toast.error("Failed to load admission data.");
@@ -322,8 +180,42 @@ export default function AdmissionForm() {
         setLoading(false);
       }
     };
-    if(user) fetchApplicationData();
-  }, [getToken, user]);
+    fetchApplicationData();
+  }, [getToken]);
+
+  // Auto Calculation Effect
+  useEffect(() => {
+    if (!form) return;
+    const maxSci = Number(form.educationalParticulars.maxScienceMarks) || 0;
+    const maxMath = Number(form.educationalParticulars.maxMathsMarks) || 0;
+    const obtSci = Number(form.educationalParticulars.obtainedScienceMarks) || 0;
+    const obtMath = Number(form.educationalParticulars.obtainedMathsMarks) || 0;
+
+    const calcTotalMax = maxSci + maxMath;
+    const calcTotalObt = obtSci + obtMath;
+
+    const strTotalMax = calcTotalMax > 0 ? calcTotalMax.toString() : "";
+    const strTotalObt = (calcTotalObt > 0 || (obtSci === 0 && obtMath === 0 && calcTotalMax > 0)) ? calcTotalObt.toString() : "";
+
+    if (
+      form.educationalParticulars.totalMaxScienceMaths !== strTotalMax ||
+      form.educationalParticulars.totalObtainedScienceMaths !== strTotalObt
+    ) {
+      setForm(prev => ({
+        ...prev,
+        educationalParticulars: {
+          ...prev.educationalParticulars,
+          totalMaxScienceMaths: strTotalMax,
+          totalObtainedScienceMaths: strTotalObt
+        }
+      }));
+    }
+  }, [
+    form?.educationalParticulars.maxScienceMarks,
+    form?.educationalParticulars.maxMathsMarks,
+    form?.educationalParticulars.obtainedScienceMarks,
+    form?.educationalParticulars.obtainedMathsMarks
+  ]);
 
   const update = (section, field, value) => {
     setForm((prev) => ({ ...prev, [section]: { ...prev[section], [field]: value } }));
@@ -333,168 +225,43 @@ export default function AdmissionForm() {
     setForm((prev) => ({ ...prev, [section]: { ...prev[section], [field]: !prev[section][field] } }));
   };
 
-  const updateStudy = (index, field, value) => {
-    setForm(prev => {
-      const updated = [...prev.studyDetails];
-      updated[index] = { ...updated[index], [field]: value };
-      return { ...prev, studyDetails: updated };
-    });
-  };
-
-const applyRangeStudy = () => {
-  const { from, to, schoolName, district, state } = rangeCtrl;
-
-  if (from < 1 || to > 10 || from > to) {
-    toast.error("Invalid range (1–10)");
-    return;
-  }
-
-  if (!schoolName || !district || !state) {
-    toast.error("Fill all fields in control panel");
-    return;
-  }
-
-  setForm(prev => {
-    const updated = [...prev.studyDetails];
-
-    for (let i = from - 1; i < to; i++) {
-      updated[i] = {
-        ...updated[i],
-        schoolName,
-        district,
-        state
-      };
-    }
-
-    return { ...prev, studyDetails: updated };
-  });
-
-  toast.success(`Applied STD_${from} → STD_${to}`);
-};
-
-const autoFillYears = (startYearStr) => {
-  if (!startYearStr.includes("-")) {
-    toast.error("Enter like 2014-15");
-    return;
-  }
-
-  const [start] = startYearStr.split("-").map(Number);
-
-  if (!start || start < 1900) {
-    toast.error("Invalid year");
-    return;
-  }
-
-  setForm(prev => {
-    const updated = [...prev.studyDetails];
-
-    for (let i = 0; i < 10; i++) {
-      const y1 = start + i;
-      const y2 = (y1 + 1).toString().slice(2); // only last 2 digits
-
-      updated[i].academicYear = `${y1}-${y2}`;
-    }
-
-    return { ...prev, studyDetails: updated };
-  });
-
-  toast.success("Years auto-filled correctly!");
-};
-  const toggleBranch = (branchCode) => {
-    if (!editable) return;
-    setForm((prev) => {
-      const isSelected = prev.branchPreferences.includes(branchCode);
-      if (!isSelected && prev.branchPreferences.length >= 5) {
-        toast.error("Maximum 5 branches allowed"); return prev;
-      }
-      return {
-        ...prev,
-        branchPreferences: isSelected ? prev.branchPreferences.filter((b) => b !== branchCode) : [...prev.branchPreferences, branchCode],
-      };
-    });
-  };
-
-  const handleMarksChange = (value, field, obtField, maxField, type) => {
-    if (value !== "" && isNaN(Number(value))) return;
-    const updatedSection = { ...form.academicDetails, [field]: value };
-    const obtStr = field === obtField ? value : updatedSection[obtField];
-    const maxStr = field === maxField ? value : updatedSection[maxField];
-    const targetPerc = type === "sslc" ? "sslcPercentage" : "itiPucPercentage";
-
-    if (obtStr === "" || maxStr === "") {
-      updatedSection[targetPerc] = "";
-      setForm(prev => ({ ...prev, academicDetails: updatedSection }));
-      return;
-    }
-    const obt = Number(obtStr); const max = Number(maxStr);
-    if (obt > max) {
-      toast.error("Obtained marks cannot be greater than Total Marks");
-      updatedSection[obtField] = ""; updatedSection[targetPerc] = "";
-    } else if (max > 0) {
-      updatedSection[targetPerc] = ((obt / max) * 100).toFixed(2);
-    } else {
-      updatedSection[targetPerc] = "0.00";
-    }
-    setForm(prev => ({ ...prev, academicDetails: updatedSection }));
-  };
-
-  const handleImageChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setImageErrorMsg("");
-    if (!file.type.startsWith("image/")) { setImageErrorMsg("Must be an Image (JPG/PNG)."); toast.error("Must be an Image (JPG/PNG)."); return; }
-    if (file.size > 2 * 1024 * 1024) { setImageErrorMsg("Max size is 2MB."); toast.error("Max size is 2MB."); return; }
-    setPreviewUrl(URL.createObjectURL(file)); setImageError(false); setUploadingImg(true);
-    try {
-      const token = await getToken();
-      const formData = new FormData();
-      formData.append("image", file);
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/upload/image`, formData, { headers: { Authorization: `Bearer ${token}` } });
-      update("personalDetails", "photo", res.data.url);
-      toast.success("Photo uploaded successfully!");
-    } catch (err) {
-      toast.error("Image upload failed."); setPreviewUrl(form.personalDetails.photo || "");
-    } finally {
-      setUploadingImg(false);
-    }
-  };
-
   const validateForm = () => {
-    const { admissionType, personalDetails, academicDetails, categoryDetails, branchPreferences, documents, studyDetails } = form;
-    const isNormal = admissionType === "NORMAL";
-    const isLateral = admissionType === "LATERAL";
+    const { basicDetails, contactDetails, educationalParticulars, declaration } = form;
 
-    const requiredPersonal = ["name", "dob", "gender", "religion", "aadharNumber", "address", "district", "state", "pincode", "mobile", "email", "photo"];
-    for (let field of requiredPersonal) {
-      if (isEmpty(personalDetails[field])) { toast.error(`Please fill Personal Details: ${field.replace(/([A-Z])/g, ' $1').trim()}`); return false; }
+    const requiredBasic = ["aadharNumber", "name", "dob", "gender", "religion"];
+    for (let field of requiredBasic) {
+      if (isEmpty(basicDetails[field])) { toast.error(`Please fill basic detail: ${field}`); return false; }
     }
 
-    if (personalDetails.aadharNumber?.length !== 12) { toast.error("Aadhaar Number must be exactly 12 digits"); return false; }
-    if (personalDetails.mobile?.length !== 10) { toast.error("Mobile Number must be exactly 10 digits"); return false; }
-    if (personalDetails.pincode?.length !== 6) { toast.error("Pincode must be exactly 6 digits"); return false; }
-
-    if (isLateral) {
-      const reqLat = ['qualifyingExam', 'itiPucRegisterNumber', 'itiPucPassingYear', 'itiPucMaxMarks', 'itiPucObtainedMarks', 'yearsStudiedInKarnataka', 'stateAppearedForQualifyingExam'];
-      for (let field of reqLat) if (isEmpty(academicDetails[field])) { toast.error(`Fill Qualifying Exam: ${field.replace('itiPuc', '').replace(/([A-Z])/g, ' $1').trim()}`); return false; }
-      if (academicDetails.qualifyingExam?.includes("ITI") && isEmpty(academicDetails.itiTrade)) { toast.error("Please enter ITI Trade"); return false; }
-      if (isEmpty(academicDetails.sslcRegisterNumber) || isEmpty(academicDetails.sslcObtainedMarks)) { toast.error("Please fill basic SSLC Details"); return false; }
-    }
-
-    if (isNormal) {
-      const reqSSLC = ['board', 'sslcRegisterNumber', 'sslcPassingYear', 'sslcMaxMarks', 'sslcObtainedMarks', 'sslcScienceMarks', 'sslcMathsMarks'];
-      for (let field of reqSSLC) if (isEmpty(academicDetails[field])) { toast.error(`Fill SSLC Details: ${field.replace(/([A-Z])/g, ' $1').trim()}`); return false; }
-    }
+    if (basicDetails.aadharNumber?.length !== 12) { toast.error("Aadhaar Number must be exactly 12 digits"); return false; }
     
-    // Validate Study Details
-    for (let row of studyDetails) {
-      if (isEmpty(row.academicYear) || isEmpty(row.schoolName) || isEmpty(row.district) || isEmpty(row.state)) {
-        toast.error(`Missing Study Details for ${row.level}`); return false;
-      }
+    if (!/^\d{2}-\d{2}-\d{4}$/.test(basicDetails.dob)) {
+      toast.error("Date of Birth must be complete (DD, MM, and 4-digit YYYY)"); return false;
     }
 
-    if (categoryDetails.category !== "GM" && isEmpty(categoryDetails.casteName)) { toast.error("Please fill Caste Name"); return false; }
-    if (branchPreferences.length === 0) { toast.error("Please select at least one Branch Preference"); return false; }
-    if (isEmpty(documents.candidateSignature) || isEmpty(documents.sslcMarksCard)) { toast.error("Missing required documents"); return false; }
+    if (isEmpty(contactDetails.mobile) || contactDetails.mobile.length !== 10) { toast.error("Student Mobile Number must be exactly 10 digits"); return false; }
+    if (isEmpty(contactDetails.parentMobile) || contactDetails.parentMobile.length !== 10) { toast.error("Parent Mobile Number must be exactly 10 digits"); return false; }
+    if (isEmpty(contactDetails.pincode) || contactDetails.pincode.length !== 6) { toast.error("Pincode must be exactly 6 digits"); return false; }
+
+    const sslcFields = ['sslcRegisterNumber', 'sslcPassingYear', 'sslcMaxMarks', 'sslcObtainedMarks', 'maxScienceMarks', 'obtainedScienceMarks', 'maxMathsMarks', 'obtainedMathsMarks'];
+    for (let field of sslcFields) {
+      if (isEmpty(educationalParticulars[field])) { toast.error(`Please fill SSLC mark details`); return false; }
+    }
+
+    if (Number(educationalParticulars.sslcObtainedMarks) > Number(educationalParticulars.sslcMaxMarks)) {
+      toast.error("Total Obtained marks cannot be greater than Total Max marks"); return false;
+    }
+    if (Number(educationalParticulars.obtainedScienceMarks) > Number(educationalParticulars.maxScienceMarks)) {
+      toast.error("Science Obtained marks cannot be greater than Science Max marks"); return false;
+    }
+    if (Number(educationalParticulars.obtainedMathsMarks) > Number(educationalParticulars.maxMathsMarks)) {
+      toast.error("Maths Obtained marks cannot be greater than Maths Max marks"); return false;
+    }
+
+    if (isEmpty(declaration.candidateSignatureText) || isEmpty(declaration.parentSignatureText)) {
+      toast.error("Please provide both signatures in the declaration section"); return false;
+    }
+
     if (!declarationChecked) { toast.error("You must accept the declaration."); return false; }
 
     return true;
@@ -520,15 +287,22 @@ const autoFillYears = (startYearStr) => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
         <div className="bg-white p-10 rounded-xl shadow-2xl text-center border-t-4 border-red-500 max-w-lg w-full">
-           <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-           <h1 className="text-3xl font-extrabold text-slate-800 mb-2">Admissions Closed</h1>
-           <p className="text-slate-500">Admissions are currently closed for the 2025-26 academic year.</p>
+          <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h1 className="text-3xl font-extrabold text-slate-800 mb-2">Admissions Closed</h1>
+          <p className="text-slate-500">Admissions are currently closed.</p>
         </div>
       </div>
     );
   }
 
   if (!form) return null;
+
+  const dobParts = form.basicDetails.dob ? form.basicDetails.dob.split("-") : ["", "", ""];
+  const dobD = dobParts[0] || "";
+  const dobM = dobParts[1] || "";
+  const dobY = dobParts[2] || "";
+
+  const updateDob = (d, m, y) => update("basicDetails", "dob", `${d}-${m}-${y}`);
 
   return (
     <div className="min-h-screen bg-slate-100 py-10 px-4 sm:px-6 font-sans">
@@ -540,7 +314,7 @@ const autoFillYears = (startYearStr) => {
             <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-blue-900 font-bold text-2xl shadow-lg">K</div>
             <div>
               <h1 className="text-2xl md:text-3xl font-extrabold uppercase tracking-tight">KPT Mangalore</h1>
-              <p className="text-blue-200 text-sm md:text-base">Govt. Polytechnic (Autonomous) | 2025-26 Admissions</p>
+              <p className="text-blue-200 text-sm md:text-base">Govt. Polytechnic (Autonomous) | Admissions 2026</p>
             </div>
           </div>
           <div className={`px-5 py-2 rounded-full text-xs font-bold uppercase tracking-widest shadow-lg ${
@@ -556,324 +330,194 @@ const autoFillYears = (startYearStr) => {
         )}
 
         <div className="p-6 md:p-10">
-          <div className="mb-10 p-5 rounded-lg border-2 border-blue-600 bg-blue-50 shadow-md flex justify-between items-start">
-            <div>
-              <p className="font-bold text-lg text-blue-800">
-                {form.admissionType === "LATERAL" ? "Lateral Entry Admission" : "First Year Admission (Normal)"}
-              </p>
-              <p className="text-xs text-slate-500 mt-1 uppercase tracking-wide font-semibold">
-                {form.admissionType === "LATERAL" ? "Direct 2nd Year (2 Years)" : "Regular (3 Years)"}
-              </p>
-            </div>
-            <CheckCircle className="w-6 h-6 text-blue-600" />
-          </div>
-
-          <SectionHeader icon={User} title="Personal Details" />
-          <div className="flex flex-col lg:flex-row gap-10">
-            <div className="w-full lg:w-56 flex-shrink-0 flex flex-col items-center">
-              <p className="text-xs font-bold text-slate-500 uppercase mb-2">Candidate Photo <span className="text-red-500">*</span></p>
-                <div className="w-40 h-48 bg-slate-100 rounded border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden relative shadow-sm group hover:border-blue-400">
-                  {previewUrl && !imageError ? (
-                    <img src={previewUrl} alt="Candidate" className="w-full h-full object-cover" onError={() => setImageError(true)}/>
-                  ) : (
-                    <div className="text-center p-4"><User className="w-12 h-12 text-slate-300 mx-auto mb-2" /><span className="text-[10px] text-slate-400 uppercase font-bold">No Image</span></div>
-                  )}
-                  {uploadingImg && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div></div>}
-                </div>
-                {editable && (
-                  <>
-                    <label htmlFor="candidatePhotoUpload" className="mt-3 w-40 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2.5 rounded shadow-sm cursor-pointer active:scale-95">
-                      <Camera className="w-4 h-4" /> {previewUrl ? "Change Photo" : "Upload Photo"}
-                      <input id="candidatePhotoUpload" name="candidatePhotoUpload" ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
-                    </label>
-                    <div className="mt-2 flex flex-col items-center text-center">
-                      {imageErrorMsg && <span className="text-[10px] text-red-500 font-bold leading-tight mb-0.5">{imageErrorMsg}</span>}
-                      <span className="text-[10px] text-slate-500 font-semibold leading-tight">Images only – Max 2MB</span>
-                    </div>
-                  </>
-                )}
-            </div>
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-5">
-              <InputGroup id="candidateName" name="candidateName" label="Candidate Name" value={form.personalDetails.name} onChange={(e) => update("personalDetails", "name", e.target.value)} required disabled={!editable} className="md:col-span-2" />
-              <InputGroup id="satsNumber" name="satsNumber" label="SATS Number" value={form.personalDetails.satsNumber} onChange={(e) => update("personalDetails", "satsNumber", e.target.value)} required={false} disabled={!editable} />
-              <InputGroup id="aadharNumber" name="aadharNumber" label="Aadhaar Number" value={form.personalDetails.aadharNumber} onChange={(e) => update("personalDetails", "aadharNumber", e.target.value.replace(/\D/g, ''))} placeholder="12 Digit Number" required disabled={!editable} maxLength={12} onPaste={(e) => { e.preventDefault(); toast.error("Copy-paste is disabled."); }} />
-              <InputGroup id="fatherName" name="fatherName" label="Father's Name" value={form.personalDetails.fatherName} onChange={(e) => update("personalDetails", "fatherName", e.target.value)} required={false} disabled={!editable} />
-              <InputGroup id="motherName" name="motherName" label="Mother's Name" value={form.personalDetails.motherName} onChange={(e) => update("personalDetails", "motherName", e.target.value)} required={false} disabled={!editable} />
-              <InputGroup id="dob" name="dob" label="Date of Birth" type="date" value={form.personalDetails.dob} onChange={(e) => update("personalDetails", "dob", e.target.value)} required disabled={!editable} />
-              <SelectGroup id="gender" name="gender" label="Gender" value={form.personalDetails.gender} onChange={(e) => update("personalDetails", "gender", e.target.value)} options={["Male", "Female", "Transgender"]} required disabled={!editable} />
-              <SelectGroup id="religion" name="religion" label="Religion" value={form.personalDetails.religion} onChange={(e) => update("personalDetails", "religion", e.target.value)} options={RELIGIONS} required disabled={!editable} />
-              <SelectGroup id="nationality" name="nationality" label="Nationality" value={form.personalDetails.nationality} onChange={(e) => update("personalDetails", "nationality", e.target.value)} options={NATIONALITIES} required={false} disabled={!editable} />
-              <SelectGroup id="motherTongue" name="motherTongue" label="Mother Tongue" value={form.personalDetails.motherTongue} onChange={(e) => update("personalDetails", "motherTongue", e.target.value)} options={MOTHER_TONGUES} required={false} disabled={!editable} />
-              <SelectGroup id="nativeState" name="nativeState" label="Native State" value={form.personalDetails.nativeState} onChange={(e) => { update("personalDetails", "nativeState", e.target.value); update("personalDetails", "nativeDistrict", ""); }} options={STATES} required={false} disabled={!editable} />
-              {form.personalDetails.nativeState === "Karnataka" ? (
-                <SelectGroup id="nativeDistrict" name="nativeDistrict" label="Native District" value={form.personalDetails.nativeDistrict} onChange={(e) => update("personalDetails", "nativeDistrict", e.target.value)} options={KARNATAKA_DISTRICTS} required={false} disabled={!editable} />
-              ) : (
-                <InputGroup id="nativeDistrict" name="nativeDistrict" label="Native District" value={form.personalDetails.nativeDistrict} onChange={(e) => update("personalDetails", "nativeDistrict", e.target.value)} required={false} disabled={!editable} />
-              )}
-            </div>
-          </div>
-
-          <SectionHeader icon={MapPin} title="Address & Contact" />
+          
+          {/* 1. BASIC DETAILS */}
+          <SectionHeader icon={User} title="Basic Details" />
           <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-               <InputGroup id="address" name="address" label="Address Line" value={form.personalDetails.address} onChange={(e) => update("personalDetails", "address", e.target.value)} disabled={!editable} required className="md:col-span-3" placeholder="House No, Street, Landmark"/>
-              <SelectGroup id="state" name="state" label="State" value={form.personalDetails.state} onChange={(e) => { update("personalDetails", "state", e.target.value); update("personalDetails", "district", ""); }} options={STATES} required disabled={!editable} />
-              {form.personalDetails.state === "Karnataka" ? (
-                <SelectGroup id="district" name="district" label="District" value={form.personalDetails.district} onChange={(e) => update("personalDetails", "district", e.target.value)} options={KARNATAKA_DISTRICTS} required disabled={!editable} />
-              ) : (
-                <InputGroup id="district" name="district" label="District" value={form.personalDetails.district} onChange={(e) => update("personalDetails", "district", e.target.value)} required disabled={!editable} />
-              )}
-              <InputGroup id="pincode" name="pincode" label="Pincode" value={form.personalDetails.pincode} onChange={(e) => update("personalDetails", "pincode", e.target.value.replace(/\D/g, ''))} required disabled={!editable} maxLength={6} />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5 pt-5 border-t border-slate-200">
-               <InputGroup id="mobile" name="mobile" label="Mobile Number" value={form.personalDetails.mobile} onChange={(e) => update("personalDetails", "mobile", e.target.value.replace(/\D/g, ''))} required disabled={!editable} maxLength={10} />
-               <InputGroup id="email" name="email" label="Email ID" type="email" value={form.personalDetails.email} onChange={(e) => update("personalDetails", "email", e.target.value)} required disabled={!editable} />
+              <InputGroup id="satsNumber" name="satsNumber" label="1. SATS NO" value={form.basicDetails.satsNumber} onChange={(e) => update("basicDetails", "satsNumber", e.target.value)} required={false} disabled={!editable} />
+              <InputGroup id="aadharNumber" name="aadharNumber" label="2. Aadhar No." value={form.basicDetails.aadharNumber} onChange={(e) => update("basicDetails", "aadharNumber", e.target.value.replace(/\D/g, ''))} placeholder="12 Digit Number" required disabled={!editable} maxLength={12} onPaste={(e) => { e.preventDefault(); toast.error("Copy-paste is disabled."); }} />
+              <InputGroup id="name" name="name" label="3. Name of the candidate (in BLOCK LETTERS only)" value={form.basicDetails.name} onChange={(e) => update("basicDetails", "name", e.target.value.toUpperCase())} required disabled={!editable} className="md:col-span-3" />
+              <InputGroup id="motherName" name="motherName" label="4. Name of the Mother" value={form.basicDetails.motherName} onChange={(e) => update("basicDetails", "motherName", e.target.value.toUpperCase())} required disabled={!editable} className="md:col-span-3" />
+              <InputGroup id="fatherName" name="fatherName" label="5. Name of the Father" value={form.basicDetails.fatherName} onChange={(e) => update("basicDetails", "fatherName", e.target.value.toUpperCase())} required disabled={!editable} className="md:col-span-3" />
+              
+              <div className="flex flex-col">
+                <label className="text-xs font-bold text-slate-500 mb-1">
+                  6. Date of Birth <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-2">
+                  <select value={dobD} onChange={(e) => updateDob(e.target.value, dobM, dobY)} disabled={!editable} className="border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-500 w-1/3">
+                    <option value="">DD</option>
+                    {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                  <select value={dobM} onChange={(e) => updateDob(dobD, e.target.value, dobY)} disabled={!editable} className="border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-500 w-1/3">
+                    <option value="">MM</option>
+                    {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                  <input type="text" placeholder="YYYY" maxLength={4} value={dobY} onChange={(e) => updateDob(dobD, dobM, e.target.value.replace(/\D/g, ''))} disabled={!editable} className="border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-500 w-1/3" />
+                </div>
+              </div>
+
+              <SelectGroup id="gender" name="gender" label="7. Gender" value={form.basicDetails.gender} onChange={(e) => update("basicDetails", "gender", e.target.value)} options={["Male", "Female", "Others"]} required disabled={!editable} />
+              <SelectGroup id="nationality" name="nationality" label="8. Indian Nationality" value={form.basicDetails.nationality} onChange={(e) => update("basicDetails", "nationality", e.target.value)} options={["Yes", "No"]} required disabled={!editable} />
+              <SelectGroup id="religion" name="religion" label="9. Religion" value={form.basicDetails.religion} onChange={(e) => update("basicDetails", "religion", e.target.value)} options={RELIGIONS} required disabled={!editable} className="md:col-span-3 lg:col-span-1" />
             </div>
           </div>
 
-          <SectionHeader icon={BookOpen} title="Academic Information" />
-          {form.admissionType === "LATERAL" && (
-            <div className="bg-blue-50 border-l-4 border-blue-600 p-6 mb-8 shadow-sm">
-              <h4 className="font-bold text-blue-900 mb-4 text-sm uppercase tracking-wider flex items-center gap-2"><Layers className="w-4 h-4"/> Qualifying Exam (ITI / PUC)</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
-                  <SelectGroup id="qualifyingExam" name="qualifyingExam" label="Exam Stream" value={form.academicDetails.qualifyingExam} onChange={(e) => update("academicDetails", "qualifyingExam", e.target.value)} options={["ITI (2 Years)", "PUC (Science)"]} required disabled={!editable} />
-                  <InputGroup id="itiPucRegisterNumber" name="itiPucRegisterNumber" label="Reg Number" value={form.academicDetails.itiPucRegisterNumber} onChange={(e) => update("academicDetails", "itiPucRegisterNumber", e.target.value)} required disabled={!editable} />
-                  <InputGroup id="itiPucPassingYear" name="itiPucPassingYear" label="Year of Passing" value={form.academicDetails.itiPucPassingYear} onChange={(e) => update("academicDetails", "itiPucPassingYear", e.target.value)} required disabled={!editable} />
-                  <InputGroup id="stateAppearedForQualifyingExam" name="stateAppearedForQualifyingExam" label="State Appeared From" value={form.academicDetails.stateAppearedForQualifyingExam} onChange={(e) => update("academicDetails", "stateAppearedForQualifyingExam", e.target.value)} required disabled={!editable} />
-                  <InputGroup id="yearsStudiedInKarnataka" name="yearsStudiedInKarnataka" label="Years Studied in Karnataka" type="number" value={form.academicDetails.yearsStudiedInKarnataka} onChange={(e) => update("academicDetails", "yearsStudiedInKarnataka", e.target.value)} required disabled={!editable} />
-                  {form.academicDetails.qualifyingExam?.includes("ITI") && (
-                    <InputGroup id="itiTrade" name="itiTrade" label="ITI Trade" value={form.academicDetails.itiTrade} onChange={(e) => update("academicDetails", "itiTrade", e.target.value)} required disabled={!editable} />
-                  )}
+          {/* 2. QUALIFYING DETAILS */}
+          <SectionHeader icon={BookOpen} title="Qualifying Details" />
+          <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <SelectGroup id="qualifyingExam" name="qualifyingExam" label="10. Qualifying Examination" value={form.qualifyingDetails.qualifyingExam} onChange={(e) => update("qualifyingDetails", "qualifyingExam", e.target.value)} options={["SSLC", "CBSE", "ICSE", "OTHERS"]} required disabled={!editable} />
+              <SelectGroup id="nativeState" name="nativeState" label="11. Code of the Native State" value={form.qualifyingDetails.nativeState} onChange={(e) => { update("qualifyingDetails", "nativeState", e.target.value); update("qualifyingDetails", "nativeDistrict", ""); }} options={STATES} required disabled={!editable} />
+              {form.qualifyingDetails.nativeState === "Karnataka" ? (
+                <SelectGroup id="nativeDistrict" name="nativeDistrict" label="12. If Karnataka, Code of Native District" value={form.qualifyingDetails.nativeDistrict} onChange={(e) => update("qualifyingDetails", "nativeDistrict", e.target.value)} options={KARNATAKA_DISTRICTS} required disabled={!editable} />
+              ) : (
+                <InputGroup id="nativeDistrict" name="nativeDistrict" label="12. Code of Native District" value={form.qualifyingDetails.nativeDistrict} onChange={(e) => update("qualifyingDetails", "nativeDistrict", e.target.value)} required disabled={!editable} />
+              )}
+            </div>
+          </div>
+
+          {/* 3. STUDY & ELIGIBILITY */}
+          <SectionHeader icon={Layers} title="Study & Eligibility" />
+          <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              <SelectGroup id="stateAppearedForQualifyingExam" name="stateAppearedForQualifyingExam" label="13. Code of State appeared for SSLC/Equiv" value={form.studyEligibility.stateAppearedForQualifyingExam} onChange={(e) => update("studyEligibility", "stateAppearedForQualifyingExam", e.target.value)} options={STATES} required disabled={!editable} />
+              <InputGroup id="yearsStudiedInKarnataka" name="yearsStudiedInKarnataka" label="14. Total No. of Years Studied in Karnataka" type="number" value={form.studyEligibility.yearsStudiedInKarnataka} onChange={(e) => update("studyEligibility", "yearsStudiedInKarnataka", e.target.value)} required disabled={!editable} />
+              <SelectGroup id="isRural" name="isRural" label="15. Studied in rural areas (1st to 10th)" value={form.studyEligibility.isRural} onChange={(e) => update("studyEligibility", "isRural", e.target.value)} options={["Yes", "No"]} required disabled={!editable} />
+              <SelectGroup id="isKannadaMedium" name="isKannadaMedium" label="16. Studied in Kannada Medium (1st to 10th)" value={form.studyEligibility.isKannadaMedium} onChange={(e) => update("studyEligibility", "isKannadaMedium", e.target.value)} options={["Yes", "No"]} required disabled={!editable} />
+            </div>
+          </div>
+
+          {/* 4. EXEMPTION & CLAIMS */}
+          <SectionHeader icon={Layers} title="Exemption & Claims" />
+          <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+              <SelectGroup id="isFiveYearExemption" name="isFiveYearExemption" label="17. Claiming exemption from 5 years rule" value={form.exemptionClaims.isFiveYearExemption} onChange={(e) => update("exemptionClaims", "isFiveYearExemption", e.target.value)} options={["Yes", "No"]} required disabled={!editable} />
+              {form.exemptionClaims.isFiveYearExemption === "Yes" && (
+                <SelectGroup id="exemptionClause" name="exemptionClause" label="18. If Yes, Mention Clause code" value={form.exemptionClaims.exemptionClause} onChange={(e) => update("exemptionClaims", "exemptionClause", e.target.value)} options={EXEMPTION_CLAUSES} required disabled={!editable} />
+              )}
+              <SelectGroup id="isHyderabadKarnataka" name="isHyderabadKarnataka" label="19. Claiming Hyd-Kar quota benefit" value={form.exemptionClaims.isHyderabadKarnataka} onChange={(e) => update("exemptionClaims", "isHyderabadKarnataka", e.target.value)} options={["Yes", "No"]} required disabled={!editable} />
+              <SelectGroup id="isSNQ" name="isSNQ" label="20. Claiming SNQ quota benefit" value={form.exemptionClaims.isSNQ} onChange={(e) => update("exemptionClaims", "isSNQ", e.target.value)} options={["Yes", "No"]} required disabled={!editable} />
+            </div>
+          </div>
+
+          {/* 5. SPECIAL CATEGORY */}
+          <SectionHeader icon={Layers} title="Special Category" />
+          <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6">
+            <p className="text-xs font-bold mb-3 text-slate-500">21. Do you claiming Special Category benefit (Please Tick the appropriate box)</p>
+            <div className="flex flex-wrap gap-6">
+              {SPECIAL_CATEGORIES_LIST.map((key) => (
+                <label key={key} className="flex items-center space-x-2 cursor-pointer">
+                  <input type="checkbox" checked={!!form.specialCategory[key]} onChange={() => toggleCheck("specialCategory", key)} disabled={!editable} className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300" />
+                  <span className="text-sm font-semibold text-slate-700">{key}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* 6. SHIFT DETAILS */}
+          <SectionHeader icon={Layers} title="Shift Details" />
+          <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6">
+            <SelectGroup id="shiftType" name="shiftType" label="Shift (Tick appropriately)" value={form.shiftDetails.shiftType} onChange={(e) => update("shiftDetails", "shiftType", e.target.value)} options={["Day Shift", "Evening Shift"]} required disabled={!editable} />
+            
+            {form.shiftDetails.shiftType === "Evening Shift" && (
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-5 pt-4 border-t border-slate-200">
+                <InputGroup id="experienceYears" name="experienceYears" label="Total service exp (Years)" type="number" value={form.shiftDetails.experienceYears} onChange={(e) => update("shiftDetails", "experienceYears", e.target.value)} required disabled={!editable} />
+                <InputGroup id="experienceMonths" name="experienceMonths" label="Total service exp (Months)" type="number" value={form.shiftDetails.experienceMonths} onChange={(e) => update("shiftDetails", "experienceMonths", e.target.value)} required disabled={!editable} />
+                <SelectGroup id="serviceCertificate" name="serviceCertificate" label="Service Cert & NOC attached" value={form.shiftDetails.serviceCertificate} onChange={(e) => update("shiftDetails", "serviceCertificate", e.target.value)} options={["Yes", "No"]} required disabled={!editable} />
               </div>
-              <div className="grid grid-cols-3 gap-5">
-                <InputGroup id="itiPucMaxMarks" name="itiPucMaxMarks" label="Max Marks" type="number" value={form.academicDetails.itiPucMaxMarks} onChange={(e) => handleMarksChange(e.target.value, "itiPucMaxMarks", "itiPucObtainedMarks", "itiPucMaxMarks", "iti")} required disabled={!editable} />
-                <InputGroup id="itiPucObtainedMarks" name="itiPucObtainedMarks" label="Obtained" type="number" value={form.academicDetails.itiPucObtainedMarks} onChange={(e) => handleMarksChange(e.target.value, "itiPucObtainedMarks", "itiPucObtainedMarks", "itiPucMaxMarks", "iti")} required disabled={!editable} />
-                <InputGroup id="itiPucPercentage" name="itiPucPercentage" label="Percentage" value={form.academicDetails.itiPucPercentage} disabled required={false} className="bg-white" />
-              </div>
+            )}
+          </div>
+
+          {/* 7. CATEGORY DETAILS */}
+          <SectionHeader icon={Layers} title="Category Details" />
+          <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <SelectGroup id="category" name="category" label="22. Reserved Category" value={form.categoryDetails.category} onChange={(e) => update("categoryDetails", "category", e.target.value)} options={CATEGORIES} disabled={!editable} />
+              <InputGroup id="casteName" name="casteName" label="23. Name of the Caste" value={form.categoryDetails.casteName} onChange={(e) => update("categoryDetails", "casteName", e.target.value)} required={form.categoryDetails.category !== "GM"} disabled={!editable} />
+              <InputGroup id="annualIncome" name="annualIncome" label="24. Annual income from all sources" type="number" value={form.categoryDetails.annualIncome} onChange={(e) => update("categoryDetails", "annualIncome", e.target.value)} required disabled={!editable} />
+            </div>
+          </div>
+
+          {/* 8. CONTACT DETAILS & ADDRESS */}
+          <SectionHeader icon={MapPin} title="Contact Details & Address" />
+          <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
+              <InputGroup id="mobile" name="mobile" label="26. Student Mobile Number" value={form.contactDetails.mobile} onChange={(e) => update("contactDetails", "mobile", e.target.value.replace(/\D/g, ''))} required disabled={!editable} maxLength={10} />
+              <InputGroup id="parentMobile" name="parentMobile" label="Parents Mobile Number" value={form.contactDetails.parentMobile} onChange={(e) => update("contactDetails", "parentMobile", e.target.value.replace(/\D/g, ''))} required disabled={!editable} maxLength={10} />
+              <InputGroup id="email" name="email" label="E-mail ID" type="email" value={form.contactDetails.email} onChange={(e) => update("contactDetails", "email", e.target.value)} required disabled={!editable} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-5 border-t border-slate-200">
+              <InputGroup id="address" name="address" label="27. Full Postal Address" value={form.contactDetails.address} onChange={(e) => update("contactDetails", "address", e.target.value)} disabled={!editable} required className="md:col-span-3" placeholder="Block Letters Only"/>
+              <SelectGroup id="state" name="state" label="State" value={form.contactDetails.state} onChange={(e) => { update("contactDetails", "state", e.target.value); update("contactDetails", "district", ""); }} options={STATES} required disabled={!editable} />
+              {form.contactDetails.state === "Karnataka" ? (
+                <SelectGroup id="district" name="district" label="District" value={form.contactDetails.district} onChange={(e) => update("contactDetails", "district", e.target.value)} options={KARNATAKA_DISTRICTS} required disabled={!editable} />
+              ) : (
+                <InputGroup id="district" name="district" label="District" value={form.contactDetails.district} onChange={(e) => update("contactDetails", "district", e.target.value)} required disabled={!editable} />
+              )}
+              <InputGroup id="pincode" name="pincode" label="PIN CODE" value={form.contactDetails.pincode} onChange={(e) => update("contactDetails", "pincode", e.target.value.replace(/\D/g, ''))} required disabled={!editable} maxLength={6} />
+            </div>
+          </div>
+
+          {/* 9. EDUCATIONAL PARTICULARS (SSLC) */}
+          <SectionHeader icon={BookOpen} title="25. Educational Particulars & Marks Details" />
+          <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5 border-b border-slate-200 pb-5">
+              <InputGroup id="sslcRegisterNumber" name="sslcRegisterNumber" label="A) Register Number of SSLC / Equiv" value={form.educationalParticulars.sslcRegisterNumber} onChange={(e) => update("educationalParticulars", "sslcRegisterNumber", e.target.value)} required disabled={!editable} />
+              <InputGroup id="sslcPassingYear" name="sslcPassingYear" label="Year of Passing" value={form.educationalParticulars.sslcPassingYear} onChange={(e) => update("educationalParticulars", "sslcPassingYear", e.target.value)} required disabled={!editable} />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
+              <InputGroup id="sslcMaxMarks" name="sslcMaxMarks" label="1) Total Max Marks in all subjects" type="number" value={form.educationalParticulars.sslcMaxMarks} onChange={(e) => update("educationalParticulars", "sslcMaxMarks", e.target.value)} required disabled={!editable} />
+              <InputGroup id="sslcObtainedMarks" name="sslcObtainedMarks" label="Total Marks obtained" type="number" value={form.educationalParticulars.sslcObtainedMarks} onChange={(e) => update("educationalParticulars", "sslcObtainedMarks", e.target.value)} required disabled={!editable} />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
+              <InputGroup id="maxScienceMarks" name="maxScienceMarks" label="2) Max. Marks in Science" type="number" value={form.educationalParticulars.maxScienceMarks} onChange={(e) => update("educationalParticulars", "maxScienceMarks", e.target.value)} required disabled={!editable} />
+              <InputGroup id="obtainedScienceMarks" name="obtainedScienceMarks" label="Marks obtained (Science)" type="number" value={form.educationalParticulars.obtainedScienceMarks} onChange={(e) => update("educationalParticulars", "obtainedScienceMarks", e.target.value)} required disabled={!editable} />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
+              <InputGroup id="maxMathsMarks" name="maxMathsMarks" label="3) Max. Marks in Maths" type="number" value={form.educationalParticulars.maxMathsMarks} onChange={(e) => update("educationalParticulars", "maxMathsMarks", e.target.value)} required disabled={!editable} />
+              <InputGroup id="obtainedMathsMarks" name="obtainedMathsMarks" label="Marks obtained (Maths)" type="number" value={form.educationalParticulars.obtainedMathsMarks} onChange={(e) => update("educationalParticulars", "obtainedMathsMarks", e.target.value)} required disabled={!editable} />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <InputGroup id="totalMaxScienceMaths" name="totalMaxScienceMaths" label="4) Total Max. Marks in Science & Maths" type="text" value={form.educationalParticulars.totalMaxScienceMaths} onChange={() => {}} required={false} disabled={true} className="bg-slate-100" />
+              <InputGroup id="totalObtainedScienceMaths" name="totalObtainedScienceMaths" label="Total Marks obtained in Science & Maths" type="text" value={form.educationalParticulars.totalObtainedScienceMaths} onChange={() => {}} required={false} disabled={true} className="bg-slate-100" />
+            </div>
+          </div>
+
+          {/* 10. DECLARATION */}
+          <SectionHeader icon={CheckCircle} title="Declaration" />
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6 shadow-sm">
+            <div className="flex items-start gap-3 mb-6 border-b border-yellow-200 pb-6">
+              <input type="checkbox" id="declaration" name="declaration" checked={declarationChecked} onChange={(e) => setDeclarationChecked(e.target.checked)} disabled={!editable} className="mt-1.5 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer" />
+              <label htmlFor="declaration" className="text-sm font-bold text-slate-800 cursor-pointer select-none leading-relaxed">
+                We declare that the above information is true and correct to the best our knowledge and belief. In case if any of the above information is found to be false or incorrect, we shall forfeit the claim to be considered for a seat in a polytechnic. In such an event, we will also be liable for civil and criminal action as the Government or the Department of Technical Education may take action against us in this behalf. Also we abide by the rules existing at the time of seat selection process.
+              </label>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <InputGroup id="candidateSignatureText" name="candidateSignatureText" label="Signature of the Candidate (Type Name)" value={form.declaration.candidateSignatureText} onChange={(e) => update("declaration", "candidateSignatureText", e.target.value)} required disabled={!editable} placeholder="Type Full Name" />
+              <InputGroup id="parentSignatureText" name="parentSignatureText" label="Signature of the Parent/Guardian (Type Name)" value={form.declaration.parentSignatureText} onChange={(e) => update("declaration", "parentSignatureText", e.target.value)} required disabled={!editable} placeholder="Type Full Name" />
+            </div>
+          </div>
+
+          {/* SUBMIT BUTTON */}
+          {editable ? (
+            <div className="mt-8 flex justify-center">
+              <button type="button" onClick={submit} disabled={submitting} className={`w-full md:w-2/3 lg:w-1/2 flex items-center justify-center gap-2 px-6 py-4 rounded-lg font-bold text-lg text-white shadow-lg transition-all transform active:scale-[0.98] ${submitting ? "bg-slate-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 hover:shadow-xl"}`}>
+                {submitting ? <>Processing...</> : <><CheckCircle className="w-5 h-5" /> {status === "CORRECTION_REQUIRED" ? "Resubmit Application" : "Submit Application"}</>}
+              </button>
+            </div>
+          ) : (
+            <div className="mt-8 px-8 py-4 bg-green-50 text-green-700 rounded-lg font-bold border border-green-200 flex justify-center items-center gap-3 text-lg">
+              <CheckCircle className="w-6 h-6" /> ✅ Application Successfully Submitted
             </div>
           )}
 
-          <div className="border border-slate-200 rounded-lg p-6 mb-6">
-            <h4 className="font-bold text-slate-700 mb-4 text-sm uppercase tracking-wider">SSLC / 10th Standard</h4>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-5">
-               <SelectGroup id="board" name="board" label="Board" value={form.academicDetails.board} onChange={(e) => update("academicDetails", "board", e.target.value)} options={["SSLC (Karnataka)", "CBSE", "ICSE", "Other"]} required disabled={!editable} />
-               <InputGroup id="sslcRegisterNumber" name="sslcRegisterNumber" label="Register No." value={form.academicDetails.sslcRegisterNumber} onChange={(e) => update("academicDetails", "sslcRegisterNumber", e.target.value)} required disabled={!editable} />
-               <InputGroup id="sslcPassingYear" name="sslcPassingYear" label="Passing Year" value={form.academicDetails.sslcPassingYear} onChange={(e) => update("academicDetails", "sslcPassingYear", e.target.value)} required disabled={!editable} />
-               {form.admissionType === "NORMAL" && (
-                 <>
-                   <InputGroup id="sslcScienceMarks" name="sslcScienceMarks" label="Science Marks" type="number" value={form.academicDetails.sslcScienceMarks} onChange={(e) => update("academicDetails", "sslcScienceMarks", e.target.value)} required disabled={!editable} />
-                   <InputGroup id="sslcMathsMarks" name="sslcMathsMarks" label="Maths Marks" type="number" value={form.academicDetails.sslcMathsMarks} onChange={(e) => update("academicDetails", "sslcMathsMarks", e.target.value)} required disabled={!editable} />
-                 </>
-               )}
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-5">
-              <InputGroup id="sslcMaxMarks" name="sslcMaxMarks" label="Total Max" type="number" value={form.academicDetails.sslcMaxMarks} onChange={(e) => handleMarksChange(e.target.value, "sslcMaxMarks", "sslcObtainedMarks", "sslcMaxMarks", "sslc")} required disabled={!editable} />
-              <InputGroup id="sslcObtainedMarks" name="sslcObtainedMarks" label="Total Obtained" type="number" value={form.academicDetails.sslcObtainedMarks} onChange={(e) => handleMarksChange(e.target.value, "sslcObtainedMarks", "sslcObtainedMarks", "sslcMaxMarks", "sslc")} required disabled={!editable} />
-              <InputGroup id="sslcPercentage" name="sslcPercentage" label="Percentage" value={form.academicDetails.sslcPercentage} disabled required={false} className="bg-slate-50" />
-            </div>
-          </div>
-
-          <SectionHeader icon={MapPin} title="Study Details (Last 10 Years)" subtitle="Ensure continuous study details from 1st to 10th Standard" />
-          <div className="bg-white border-2 border-blue-100 rounded-xl overflow-hidden shadow-sm mb-10">
-            <div className="bg-blue-50 p-6 border-b-2 border-blue-100">
-               <h5 className="text-[11px] font-black text-blue-800 uppercase mb-4 flex items-center gap-2"><Layers className="w-4 h-4" /> Quick Apply Control Panel</h5>
-              <div className="grid grid-cols-2 md:grid-cols-8 gap-4">
-                <FormFieldWrapper label="From Class">
-                  <Select value={rangeCtrl.from} options={[1,2,3,4,5,6,7,8,9,10]} onChange={e => setRangeCtrl({...rangeCtrl, from: Number(e.target.value)})} disabled={!editable} />
-                </FormFieldWrapper>
-                <FormFieldWrapper label="To Class">
-                  <Select value={rangeCtrl.to} options={[1,2,3,4,5,6,7,8,9,10]} onChange={e => setRangeCtrl({...rangeCtrl, to: Number(e.target.value)})} disabled={!editable} />
-                </FormFieldWrapper>
-                
-                <div className="col-span-2">
-                  <FormFieldWrapper label="School Name">
-                    <Input value={rangeCtrl.schoolName} onChange={e => setRangeCtrl({...rangeCtrl, schoolName: e.target.value})} disabled={!editable} />
-                  </FormFieldWrapper>
-                </div>
-           <FormFieldWrapper label="District">
-  {rangeCtrl.state === "Karnataka" ? (
-    <Select
-      value={rangeCtrl.district}
-      options={KARNATAKA_DISTRICTS}
-      onChange={e => setRangeCtrl({...rangeCtrl, district: e.target.value})}
-      disabled={!editable}
-    />
-  ) : (
-    <Input
-      value={rangeCtrl.district}
-      onChange={e => setRangeCtrl({...rangeCtrl, district: e.target.value})}
-      disabled={!editable}
-    />
-  )}
-</FormFieldWrapper>
-                <FormFieldWrapper label="State">
-                  <Select value={rangeCtrl.state} options={STATES} onChange={e => setRangeCtrl({...rangeCtrl, state: e.target.value})} disabled={!editable} />
-                </FormFieldWrapper>
-                <div className="flex flex-col gap-1">
-                  <button type="button" onClick={applyRangeStudy} disabled={!editable} className="bg-blue-700 text-white font-bold h-[38px] rounded hover:bg-blue-800 active:scale-95 transition-all text-xs">APPLY</button>
-                  <button type="button" onClick={() => autoFillYears(form.studyDetails[0].academicYear)} disabled={!editable} className="bg-slate-700 text-white font-bold h-[38px] rounded hover:bg-slate-800 active:scale-95 transition-all text-xs">AUTO YEAR</button>
-                </div>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-               <table className="w-full text-left border-collapse">
-                  <thead className="bg-slate-100 border-b border-slate-200">
-                      <tr>
-                        <th className="p-3 text-[10px] font-black uppercase text-slate-500 w-24">Level</th>
-                        <th className="p-3 text-[10px] font-black uppercase text-slate-500 w-40">Academic Year</th>
-                        <th className="p-3 text-[10px] font-black uppercase text-slate-500">School Name</th>
-                        <th className="p-3 text-[10px] font-black uppercase text-slate-500 w-48">District</th>
-                        <th className="p-3 text-[10px] font-black uppercase text-slate-500 w-40">State</th>
-                      </tr>
-                  </thead>
-                  <tbody>
-                     {form.studyDetails.map((row, idx) => (
-                        <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                           <td className="p-3 font-bold text-slate-700 text-sm">{row.level}</td>
-                           <td className="p-2">
-                              <Input
-  placeholder="20XX-20XX"
-  value={row.academicYear}
-  onChange={e => {
-    updateStudy(idx, "academicYear", e.target.value);
-
-    if (idx === 0 && e.target.value.includes("-")) {
-  autoFillYears(e.target.value);
-}
-  }}
-  disabled={!editable}
-/>
-                           </td>
-                           <td className="p-2">
-                              <Input value={row.schoolName} onChange={e => updateStudy(idx, "schoolName", e.target.value)} disabled={!editable} />
-                           </td>
-                           <td className="p-2">
-                           {row.state === "Karnataka" ? (
-  <Select
-    value={row.district}
-    options={KARNATAKA_DISTRICTS}
-    onChange={e => updateStudy(idx, "district", e.target.value)}
-    disabled={!editable}
-  />
-) : (
-  <Input
-    value={row.district}
-    onChange={e => updateStudy(idx, "district", e.target.value)}
-    disabled={!editable}
-  />
-)}
-                           </td>
-                           <td className="p-2">
-                              <Select value={row.state} options={STATES} onChange={e => updateStudy(idx, "state", e.target.value)} disabled={!editable} />
-                           </td>
-                        </tr>
-                     ))}
-                  </tbody>
-               </table>
-            </div>
-          </div>
-
-          <SectionHeader icon={Layers} title="Category & Reservation" />
-          <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <SelectGroup id="category" name="category" label="Category" value={form.categoryDetails.category} onChange={(e) => update("categoryDetails", "category", e.target.value)} options={[
-  "GM",
-  "SC - Category A",
-  "SC - Category B",
-  "SC - Category C",
-  "ST",
-  "Cat-1",
-  "2A",
-  "2B",
-  "3A",
-  "3B"
-]} disabled={!editable} />
-              <InputGroup id="casteName" name="casteName" label="Caste Name" value={form.categoryDetails.casteName} onChange={(e) => update("categoryDetails", "casteName", e.target.value)} required={form.categoryDetails.category !== "GM"} disabled={!editable} />
-              <InputGroup id="annualIncome" name="annualIncome" label="Annual Income (₹)" type="number" value={form.categoryDetails.annualIncome} onChange={(e) => update("categoryDetails", "annualIncome", e.target.value)} disabled={!editable} />
-            </div>
-            <div className="flex flex-wrap gap-4 mt-6">
-                {[ { key: "isRural", label: "Rural Quota (1st-10th Rural)" }, { key: "isKannadaMedium", label: "Kannada Medium Quota" }, { key: "isStudyCertificateExempt", label: "Exemption from 7-Years Study Rule" } ].map((item) => (
-                 <label key={item.key} htmlFor={item.key} className={`flex items-center space-x-3 p-4 rounded-lg border cursor-pointer transition-all ${form.categoryDetails[item.key] ? "bg-blue-50 border-blue-500 ring-1 ring-blue-500" : "bg-white border-slate-200 hover:bg-slate-50"} ${!editable && "opacity-60 cursor-not-allowed"}`}>
-                   <input id={item.key} name={item.key} type="checkbox" checked={!!form.categoryDetails[item.key]} onChange={() => toggleCheck("categoryDetails", item.key)} disabled={!editable} className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300" />
-                   <span className="text-sm font-semibold text-slate-700">{item.label}</span>
-                 </label>
-                ))}
-            </div>
-          </div>
-
-          <SectionHeader icon={Upload} title="Document Uploads" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-            <DocumentUpload id="candidateSignature" name="candidateSignature" label="Candidate Signature" value={form.documents.candidateSignature} onUpload={(url) => update("documents", "candidateSignature", url)} required disabled={!editable} accept="image/*" />
-            <DocumentUpload id="parentSignature" name="parentSignature" label="Parent Signature" value={form.documents.parentSignature} onUpload={(url) => update("documents", "parentSignature", url)} required disabled={!editable} accept="image/*" />
-            <DocumentUpload id="sslcMarksCard" name="sslcMarksCard" label="SSLC Marks Card" value={form.documents.sslcMarksCard} onUpload={(url) => update("documents", "sslcMarksCard", url)} required disabled={!editable} accept="application/pdf" />
-            <DocumentUpload id="aadhaarCard" name="aadhaarCard" label="Aadhaar Card" value={form.documents.aadhaarCard} onUpload={(url) => update("documents", "aadhaarCard", url)} required disabled={!editable} accept="application/pdf" />
-            {form.admissionType === "LATERAL" && form.academicDetails.qualifyingExam?.includes("ITI") && (
-               <DocumentUpload id="itiMarksCard" name="itiMarksCard" label="ITI Marks Card" value={form.documents.itiMarksCard} onUpload={(url) => update("documents", "itiMarksCard", url)} required disabled={!editable} accept="application/pdf" />
-            )}
-            {form.admissionType === "LATERAL" && form.academicDetails.qualifyingExam?.includes("PUC") && (
-               <DocumentUpload id="pucMarksCard" name="pucMarksCard" label="PUC Marks Card" value={form.documents.pucMarksCard} onUpload={(url) => update("documents", "pucMarksCard", url)} required disabled={!editable} accept="application/pdf" />
-            )}
-            {form.categoryDetails.category !== "GM" && (
-               <DocumentUpload id="casteCertificate" name="casteCertificate" label="Caste Certificate" value={form.documents.casteCertificate} onUpload={(url) => update("documents", "casteCertificate", url)} required disabled={!editable} accept="application/pdf" />
-            )}
-            {Number(form.categoryDetails.annualIncome) > 0 && (
-               <DocumentUpload id="incomeCertificate" name="incomeCertificate" label="Income Certificate" value={form.documents.incomeCertificate} onUpload={(url) => update("documents", "incomeCertificate", url)} required disabled={!editable} accept="application/pdf" />
-            )}
-            {form.categoryDetails.isRural && (
-               <DocumentUpload id="ruralCertificate" name="ruralCertificate" label="Rural Certificate" value={form.documents.ruralCertificate} onUpload={(url) => update("documents", "ruralCertificate", url)} required disabled={!editable} accept="application/pdf" />
-            )}
-            {form.categoryDetails.isKannadaMedium && (
-               <DocumentUpload id="kannadaCertificate" name="kannadaCertificate" label="Kannada Medium Cert" value={form.documents.kannadaCertificate} onUpload={(url) => update("documents", "kannadaCertificate", url)} required disabled={!editable} accept="application/pdf" />
-            )}
-            {form.categoryDetails.isStudyCertificateExempt && (
-               <DocumentUpload id="studyExemptionCertificate" name="studyExemptionCertificate" label="Study Exemption Cert" value={form.documents.studyExemptionCertificate} onUpload={(url) => update("documents", "studyExemptionCertificate", url)} required disabled={!editable} accept="application/pdf" />
-            )}
-          </div>
-
-          <SectionHeader icon={Layers} title="Branch Preferences" />
-          <div className="bg-slate-50 rounded-lg p-6 border border-slate-200 shadow-inner">
-             <div className="flex justify-between items-center mb-4">
-               <p className="text-xs font-bold text-slate-500 uppercase">Select branches in order of priority <span className="text-red-500">*</span></p>
-               <span className="text-xs bg-slate-200 px-2 py-1 rounded text-slate-600">Selected: {form.branchPreferences.length}</span>
-             </div>
-             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-               {BRANCHES.map((b) => {
-                 const selected = form.branchPreferences.includes(b.code);
-                 const index = form.branchPreferences.indexOf(b.code) + 1;
-                 return (
-                  <button key={b.code} type="button" disabled={!editable} onClick={() => toggleBranch(b.code)} className={`relative p-3 rounded-lg text-sm font-bold text-left transition-all border flex items-center justify-between group ${selected ? "bg-blue-600 text-white border-blue-700 shadow-md" : "bg-white text-slate-600 border-slate-200 hover:border-blue-400 hover:text-blue-700"} ${!editable && "opacity-60 cursor-not-allowed"}`}>
-                    <span>{b.label}</span>
-                    {selected ? <span className="w-6 h-6 bg-white text-blue-600 text-xs font-extrabold flex items-center justify-center rounded-full shadow">{index}</span> : <span className="w-6 h-6 border-2 border-slate-200 rounded-full group-hover:border-blue-300"></span>}
-                  </button>
-                 );
-               })}
-             </div>
-          </div>
-
-          <div className="mt-12 pt-8 border-t border-slate-200 flex flex-col items-center">
-            {editable ? (
-              <>
-                <div className="w-full max-w-2xl bg-yellow-50 border border-yellow-200 rounded-lg p-5 mb-6 shadow-sm">
-                  <div className="flex items-start gap-3">
-                    <input type="checkbox" id="declaration" name="declaration" checked={declarationChecked} onChange={(e) => setDeclarationChecked(e.target.checked)} className="mt-1.5 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer" />
-                    <label htmlFor="declaration" className="text-sm text-slate-700 cursor-pointer select-none leading-relaxed">
-                      I, <span className="font-bold text-blue-900 border-b border-blue-900 px-1">{form.personalDetails.name || "__________________"}</span>, 
-                      {form.personalDetails.fatherName && <span> S/D/o <span className="font-bold text-blue-900 border-b border-blue-900 px-1">{form.personalDetails.fatherName}</span>,</span>} 
-                      hereby declare that the entries made by me in this application form are correct to the best of my knowledge and belief.
-                    </label>
-                  </div>
-                </div>
-                <div className="flex flex-col md:flex-row gap-4 w-full md:w-2/3 lg:w-1/2 justify-center">
-                   <button type="button" onClick={submit} disabled={submitting} className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-lg font-bold text-lg text-white shadow-lg transition-all transform active:scale-[0.98] w-full ${submitting ? "bg-slate-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 hover:shadow-xl"}`}>
-                     {submitting ? <>Processing...</> : <><CheckCircle className="w-5 h-5" /> {status === "CORRECTION_REQUIRED" ? "Resubmit Application" : "Submit Application"}</>}
-                   </button>
-                </div>
-              </>
-            ) : (
-              <div className="px-8 py-4 bg-green-50 text-green-700 rounded-lg font-bold border border-green-200 flex items-center gap-3 text-lg"><CheckCircle className="w-6 h-6" /> ✅ Application Successfully Submitted</div>
-            )}
-          </div>
         </div>
       </div>
     </div>

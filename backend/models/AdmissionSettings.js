@@ -1,3 +1,5 @@
+// models/AdmissionSettings.js
+
 import mongoose from "mongoose";
 
 const admissionSettingsSchema = new mongoose.Schema(

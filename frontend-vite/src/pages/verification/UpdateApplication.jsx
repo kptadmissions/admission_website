@@ -1,0 +1,436 @@
+// src/pages/verification/EditApplication.jsx
+import { useEffect, useState } from "react";
+import { useAuth } from "@clerk/clerk-react";
+import axios from "axios";
+import { toast } from "react-toastify";
+import { 
+    User, MapPin, BookOpen, Layers, CheckCircle, AlertCircle, XCircle, Search, Loader2
+} from "lucide-react"; 
+import FullPageLoader from "../../components/FullPageLoader";
+
+// --- CONFIGURATION (REUSED) ---
+const RELIGIONS = ["Hindu", "Muslim", "Christian", "Sikh", "Jain", "Buddhist", "Parsi", "Other"];
+const CATEGORIES = ["GM", "SC", "ST", "C-1", "2A", "2B", "3A", "3B"];
+const EXEMPTION_CLAUSES = ["A", "B", "C", "D", "E", "F", "G"];
+const SPECIAL_CATEGORIES_LIST = ["JTS", "JOC", "EDP", "DP", "PS", "SP", "SG", "AI", "CI", "GK", "ITI", "NCC", "PH"];
+
+const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
+const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+
+const STATES = [
+    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana",
+    "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur",
+    "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana",
+    "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", "Andaman and Nicobar Islands", "Chandigarh",
+    "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
+];
+
+const KARNATAKA_DISTRICTS = [
+    "Bagalkot","Ballari","Belagavi","Bengaluru Rural","Bengaluru Urban",
+    "Bidar","Chamarajanagar","Chikkaballapur","Chikkamagaluru","Chitradurga",
+    "Dakshina Kannada","Davanagere","Dharwad","Gadag","Hassan",
+    "Haveri","Kalaburagi","Kodagu","Kolar","Koppal",
+    "Mandya","Mysuru","Raichur","Ramanagara","Shivamogga",
+    "Tumakuru","Udupi","Uttara Kannada","Vijayapura","Yadgir"
+];
+
+const EMPTY_FORM = {
+    basicDetails: { satsNumber: "", aadharNumber: "", name: "", motherName: "", fatherName: "", dob: "", gender: "", nationality: "Yes", religion: "" },
+    qualifyingDetails: { qualifyingExam: "", nativeState: "Karnataka", nativeDistrict: "" },
+    studyEligibility: { stateAppearedForQualifyingExam: "Karnataka", yearsStudiedInKarnataka: "", isRural: "No", isKannadaMedium: "No" },
+    exemptionClaims: { isFiveYearExemption: "No", exemptionClause: "", isHyderabadKarnataka: "No", isSNQ: "No" },
+    specialCategory: { JTS: false, JOC: false, EDP: false, DP: false, PS: false, SP: false, SG: false, AI: false, CI: false, GK: false, ITI: false, NCC: false, PH: false },
+    shiftDetails: { shiftType: "Day Shift", experienceYears: "", experienceMonths: "", serviceCertificate: "No" },
+    categoryDetails: { category: "GM", casteName: "", annualIncome: "" },
+    contactDetails: { mobile: "", parentMobile: "", email: "", address: "", state: "Karnataka", district: "", pincode: "" },
+    educationalParticulars: { sslcRegisterNumber: "", sslcPassingYear: "", sslcMaxMarks: "", sslcObtainedMarks: "", maxScienceMarks: "", obtainedScienceMarks: "", maxMathsMarks: "", obtainedMathsMarks: "", totalMaxScienceMaths: "", totalObtainedScienceMaths: "" },
+    declaration: { candidateSignatureText: "", parentSignatureText: "" }
+};
+
+const isEmpty = (value) => value === undefined || value === null || value.toString().trim() === "";
+
+// --- HELPER COMPONENTS (REUSED) ---
+const InputGroup = ({ id, name, label, value, onChange, type = "text", placeholder, required = true, disabled = false, className = "", maxLength, onPaste }) => (
+    <div className={`flex flex-col ${className}`}>
+        <label htmlFor={id} className="text-xs font-bold text-slate-500 mb-1">
+            {label} {required && <span className="text-red-500">*</span>}
+        </label>
+        <input
+            id={id} name={name} type={type} value={value ?? ""} onChange={onChange}
+            placeholder={placeholder} maxLength={maxLength} onPaste={onPaste} disabled={disabled}
+            autoComplete="off"
+            className="border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-500"
+        />
+    </div>
+);
+
+const SelectGroup = ({ id, name, label, value, onChange, options, disabled = false, required = true }) => (
+    <div className="flex flex-col">
+        <label htmlFor={id} className="text-xs font-bold mb-1 text-slate-500">
+            {label} {required && <span className="text-red-500">*</span>}
+        </label>
+        <select
+            id={id} name={name} value={value ?? ""} onChange={onChange} disabled={disabled}
+            className="border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-500"
+        >
+            <option value="">Select</option>
+            {options.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+    </div>
+);
+
+const SectionHeader = ({ icon: Icon, title, subtitle }) => (
+    <div className="flex items-center gap-2 mb-6 mt-8 pb-2 border-b-2 border-slate-100">
+        <div className="bg-blue-100 p-1.5 rounded-md">
+            {Icon && <Icon className="w-5 h-5 text-blue-700" />}
+        </div>
+        <div>
+            <h3 className="text-lg font-bold text-slate-800">{title}</h3>
+            {subtitle && <p className="text-xs font-medium text-slate-500 mt-0.5">{subtitle}</p>}
+        </div>
+    </div>
+);
+
+// --- MAIN COMPONENT ---
+export default function EditApplication() {
+    const { getToken } = useAuth();
+    
+    // Search State
+    const [searchSslc, setSearchSslc] = useState("");
+    const [isLoaded, setIsLoaded] = useState(false);
+    
+    // Form State
+    const [form, setForm] = useState(JSON.parse(JSON.stringify(EMPTY_FORM)));
+    const [status, setStatus] = useState("EDIT_MODE");
+    const [loading, setLoading] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [declarationChecked, setDeclarationChecked] = useState(false);
+
+    // --- STEP 1: LOAD FUNCTION ---
+    const handleLoadApplication = async () => {
+        if (!searchSslc) return toast.error("Please enter SSLC Register Number");
+        
+        setLoading(true);
+        try {
+            const token = await getToken();
+            const res = await axios.get(
+                `${import.meta.env.VITE_API_URL}/applications/search?sslc=${searchSslc}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            const data = res.data;
+
+            // --- STEP 2: PREFILL & DATE CONVERSION ---
+            if (data.basicDetails?.dob) {
+                const dateObj = new Date(data.basicDetails.dob);
+                const dd = String(dateObj.getDate()).padStart(2, '0');
+                const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const yyyy = dateObj.getFullYear();
+                data.basicDetails.dob = `${dd}-${mm}-${yyyy}`;
+            }
+
+            setForm(data);
+            setIsLoaded(true);
+            setStatus(data.status || "EDIT_MODE");
+            setDeclarationChecked(true); // Assuming already checked for existing apps
+            toast.success("Application Loaded Successfully");
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Application not found");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Auto Calculation Effect (REUSED)
+    useEffect(() => {
+        if (!form || !isLoaded) return;
+        const maxSci = Number(form.educationalParticulars.maxScienceMarks) || 0;
+        const maxMath = Number(form.educationalParticulars.maxMathsMarks) || 0;
+        const obtSci = Number(form.educationalParticulars.obtainedScienceMarks) || 0;
+        const obtMath = Number(form.educationalParticulars.obtainedMathsMarks) || 0;
+
+        const calcTotalMax = maxSci + maxMath;
+        const calcTotalObt = obtSci + obtMath;
+
+        const strTotalMax = calcTotalMax > 0 ? calcTotalMax.toString() : "";
+        const strTotalObt = (calcTotalObt > 0 || (obtSci === 0 && obtMath === 0 && calcTotalMax > 0)) ? calcTotalObt.toString() : "";
+
+        if (
+            form.educationalParticulars.totalMaxScienceMaths !== strTotalMax ||
+            form.educationalParticulars.totalObtainedScienceMaths !== strTotalObt
+        ) {
+            setForm(prev => ({
+                ...prev,
+                educationalParticulars: {
+                    ...prev.educationalParticulars,
+                    totalMaxScienceMaths: strTotalMax,
+                    totalObtainedScienceMaths: strTotalObt
+                }
+            }));
+        }
+    }, [
+        form?.educationalParticulars.maxScienceMarks,
+        form?.educationalParticulars.maxMathsMarks,
+        form?.educationalParticulars.obtainedScienceMarks,
+        form?.educationalParticulars.obtainedMathsMarks,
+        isLoaded
+    ]);
+
+    const update = (section, field, value) => {
+        setForm(prev => ({
+            ...prev,
+            [section]: { ...prev[section], [field]: value }
+        }));
+    };
+
+    const toggleCheck = (section, field) => {
+        setForm((prev) => ({ ...prev, [section]: { ...prev[section], [field]: !prev[section][field] } }));
+    };
+
+    const validateForm = () => {
+        const { basicDetails, contactDetails, educationalParticulars, declaration } = form;
+        const requiredBasic = ["aadharNumber", "name", "dob", "gender", "religion"];
+        for (let field of requiredBasic) if (isEmpty(basicDetails[field])) { toast.error(`Please fill basic detail: ${field}`); return false; }
+        if (basicDetails.aadharNumber?.length !== 12) { toast.error("Aadhaar Number must be 12 digits"); return false; }
+        if (!/^\d{2}-\d{2}-\d{4}$/.test(basicDetails.dob)) { toast.error("Invalid Date of Birth format"); return false; }
+        if (isEmpty(contactDetails.mobile) || contactDetails.mobile.length !== 10) { toast.error("Student Mobile must be 10 digits"); return false; }
+        if (!declarationChecked) { toast.error("You must accept the declaration."); return false; }
+        return true;
+    };
+
+    // --- STEP 4: UPDATE API LOGIC ---
+ const submitUpdate = async () => {
+    if (!validateForm()) return;
+
+    setSubmitting(true);
+
+    try {
+        const token = await getToken();
+
+        await axios.put(
+            `${import.meta.env.VITE_API_URL}/applications/update/${form.educationalParticulars.sslcRegisterNumber}`,
+            form,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        toast.success("Application Updated Successfully");
+
+        // 🔥 RESET EVERYTHING
+        setForm(JSON.parse(JSON.stringify(EMPTY_FORM)));
+        setIsLoaded(false);
+        setSearchSslc("");
+        setDeclarationChecked(false);
+        setStatus("EDIT_MODE");
+
+    } catch (e) {
+        toast.error(e.response?.data?.message || "Failed to update application.");
+    } finally {
+        setSubmitting(false);
+    }
+};
+
+    const dobParts = form.basicDetails.dob ? form.basicDetails.dob.split("-") : ["", "", ""];
+    const dobD = dobParts[0] || "";
+    const dobM = dobParts[1] || "";
+    const dobY = dobParts[2] || "";
+    const updateDob = (d, m, y) => update("basicDetails", "dob", `${d}-${m}-${y}`);
+
+    if (loading) return <FullPageLoader label="Fetching Application..." />;
+
+    return (
+        <div className="min-h-screen bg-slate-100 py-10 px-4 sm:px-6 font-sans">
+            <div className="max-w-6xl mx-auto bg-white shadow-2xl rounded-xl overflow-hidden border border-slate-200">
+                
+                {/* HEADER (REUSED) */}
+                <div className="bg-blue-900 p-6 text-white border-b-4 border-yellow-500 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-blue-900 font-bold text-2xl shadow-lg">K</div>
+                        <div>
+                            <h1 className="text-2xl md:text-3xl font-extrabold uppercase tracking-tight">KPT Mangalore</h1>
+                            <p className="text-blue-200 text-sm md:text-base">Govt. Polytechnic (Autonomous) | Edit Portal</p>
+                        </div>
+                    </div>
+                    <div className="px-5 py-2 rounded-full text-xs font-bold uppercase tracking-widest shadow-lg bg-white text-blue-900">
+                        Mode: Edit Application
+                    </div>
+                </div>
+
+                {/* --- STEP 1: SEARCH BAR --- */}
+                <div className="p-6 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row gap-4 items-end">
+                    <div className="flex-1 w-full">
+                        <label className="text-xs font-bold text-slate-500 mb-1 block">Enter SSLC Register Number to Edit</label>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-2.5 w-5 h-5 text-slate-400" />
+                            <input 
+                                type="text" 
+                                value={searchSslc}
+                                onChange={(e) => setSearchSslc(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                placeholder="Example: 2024010203"
+                            />
+                        </div>
+                    </div>
+                    <button 
+                        onClick={handleLoadApplication}
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-2 rounded-lg transition-colors flex items-center gap-2"
+                    >
+                        {loading ? <Loader2 className="animate-spin w-5 h-5" /> : "Load Application"}
+                    </button>
+                </div>
+
+                {isLoaded && (
+                    <div className="p-6 md:p-10 animate-in fade-in duration-500">
+                        {/* 1. BASIC DETAILS */}
+                        <SectionHeader icon={User} title="Basic Details" />
+                        <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                <InputGroup id="satsNumber" name="satsNumber" label="1. SATS NO" value={form.basicDetails.satsNumber} onChange={(e) => update("basicDetails", "satsNumber", e.target.value)} required={false} />
+                                <InputGroup id="aadharNumber" name="aadharNumber" label="2. Aadhar No." value={form.basicDetails.aadharNumber} onChange={(e) => update("basicDetails", "aadharNumber", e.target.value.replace(/\D/g, ''))} placeholder="12 Digit Number" required maxLength={12} />
+                                <InputGroup id="name" name="name" label="3. Name of the candidate" value={form.basicDetails.name} onChange={(e) => update("basicDetails", "name", e.target.value.toUpperCase())} required className="md:col-span-3" />
+                                <InputGroup id="motherName" name="motherName" label="4. Name of the Mother" value={form.basicDetails.motherName} onChange={(e) => update("basicDetails", "motherName", e.target.value.toUpperCase())} required className="md:col-span-3" />
+                                <InputGroup id="fatherName" name="fatherName" label="5. Name of the Father" value={form.basicDetails.fatherName} onChange={(e) => update("basicDetails", "fatherName", e.target.value.toUpperCase())} required className="md:col-span-3" />
+                                
+                                <div className="flex flex-col">
+                                    <label className="text-xs font-bold text-slate-500 mb-1">6. Date of Birth <span className="text-red-500">*</span></label>
+                                    <div className="flex gap-2">
+                                        <select value={dobD} onChange={(e) => updateDob(e.target.value, dobM, dobY)} className="border rounded p-2 w-1/3"><option value="">DD</option>{DAYS.map(d => <option key={d} value={d}>{d}</option>)}</select>
+                                        <select value={dobM} onChange={(e) => updateDob(dobD, e.target.value, dobY)} className="border rounded p-2 w-1/3"><option value="">MM</option>{MONTHS.map(m => <option key={m} value={m}>{m}</option>)}</select>
+                                        <input type="text" placeholder="YYYY" maxLength={4} value={dobY} onChange={(e) => updateDob(dobD, dobM, e.target.value.replace(/\D/g, ''))} className="border rounded p-2 w-1/3" />
+                                    </div>
+                                </div>
+
+                                <SelectGroup id="gender" name="gender" label="7. Gender" value={form.basicDetails.gender} onChange={(e) => update("basicDetails", "gender", e.target.value)} options={["Male", "Female", "Others"]} />
+                                <SelectGroup id="nationality" name="nationality" label="8. Indian Nationality" value={form.basicDetails.nationality} onChange={(e) => update("basicDetails", "nationality", e.target.value)} options={["Yes", "No"]} />
+                                <SelectGroup id="religion" name="religion" label="9. Religion" value={form.basicDetails.religion} onChange={(e) => update("basicDetails", "religion", e.target.value)} options={RELIGIONS} />
+                            </div>
+                        </div>
+
+                        {/* 2. QUALIFYING DETAILS */}
+                        <SectionHeader icon={BookOpen} title="Qualifying Details" />
+                        <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                <SelectGroup id="qualifyingExam" name="qualifyingExam" label="10. Qualifying Examination" value={form.qualifyingDetails.qualifyingExam} onChange={(e) => update("qualifyingDetails", "qualifyingExam", e.target.value)} options={["SSLC", "CBSE", "ICSE", "OTHERS"]} />
+                                <SelectGroup id="nativeState" name="nativeState" label="11. Code of the Native State" value={form.qualifyingDetails.nativeState} onChange={(e) => update("qualifyingDetails", "nativeState", e.target.value)} options={STATES} />
+                                <SelectGroup id="nativeDistrict" name="nativeDistrict" label="12. Native District" value={form.qualifyingDetails.nativeDistrict} onChange={(e) => update("qualifyingDetails", "nativeDistrict", e.target.value)} options={KARNATAKA_DISTRICTS} />
+                            </div>
+                        </div>
+
+                        {/* 3. STUDY & ELIGIBILITY */}
+                        <SectionHeader icon={Layers} title="Study & Eligibility" />
+                        <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                                <SelectGroup id="stateAppearedForQualifyingExam" name="stateAppearedForQualifyingExam" label="13. Exam State" value={form.studyEligibility.stateAppearedForQualifyingExam} onChange={(e) => update("studyEligibility", "stateAppearedForQualifyingExam", e.target.value)} options={STATES} />
+                                <InputGroup id="yearsStudiedInKarnataka" name="yearsStudiedInKarnataka" label="14. Years in Karnataka" type="number" value={form.studyEligibility.yearsStudiedInKarnataka} onChange={(e) => update("studyEligibility", "yearsStudiedInKarnataka", e.target.value)} />
+                                <SelectGroup id="isRural" name="isRural" label="15. Rural Area" value={form.studyEligibility.isRural} onChange={(e) => update("studyEligibility", "isRural", e.target.value)} options={["Yes", "No"]} />
+                                <SelectGroup id="isKannadaMedium" name="isKannadaMedium" label="16. Kannada Medium" value={form.studyEligibility.isKannadaMedium} onChange={(e) => update("studyEligibility", "isKannadaMedium", e.target.value)} options={["Yes", "No"]} />
+                            </div>
+                        </div>
+
+                        {/* 4. EXEMPTION & CLAIMS */}
+                        <SectionHeader icon={Layers} title="Exemption & Claims" />
+                        <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                                <SelectGroup id="isFiveYearExemption" name="isFiveYearExemption" label="17. Exemption Claimed" value={form.exemptionClaims.isFiveYearExemption} onChange={(e) => update("exemptionClaims", "isFiveYearExemption", e.target.value)} options={["Yes", "No"]} />
+                                {form.exemptionClaims.isFiveYearExemption === "Yes" && <SelectGroup id="exemptionClause" name="exemptionClause" label="18. Clause code" value={form.exemptionClaims.exemptionClause} onChange={(e) => update("exemptionClaims", "exemptionClause", e.target.value)} options={EXEMPTION_CLAUSES} />}
+                                <SelectGroup id="isHyderabadKarnataka" name="isHyderabadKarnataka" label="19. Hyd-Kar quota" value={form.exemptionClaims.isHyderabadKarnataka} onChange={(e) => update("exemptionClaims", "isHyderabadKarnataka", e.target.value)} options={["Yes", "No"]} />
+                                <SelectGroup id="isSNQ" name="isSNQ" label="20. SNQ quota" value={form.exemptionClaims.isSNQ} onChange={(e) => update("exemptionClaims", "isSNQ", e.target.value)} options={["Yes", "No"]} />
+                            </div>
+                        </div>
+
+                        {/* 5. SPECIAL CATEGORY */}
+                        <SectionHeader icon={Layers} title="Special Category" />
+                        <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6 flex flex-wrap gap-6">
+                            {SPECIAL_CATEGORIES_LIST.map((key) => (
+                                <label key={key} className="flex items-center space-x-2 cursor-pointer">
+                                    <input type="checkbox" checked={!!form.specialCategory[key]} onChange={() => toggleCheck("specialCategory", key)} className="w-5 h-5 text-blue-600 rounded" />
+                                    <span className="text-sm font-semibold text-slate-700">{key}</span>
+                                </label>
+                            ))}
+                        </div>
+
+                        {/* 6. SHIFT DETAILS */}
+                        <SectionHeader icon={Layers} title="Shift Details" />
+                        <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6">
+                            <SelectGroup id="shiftType" name="shiftType" label="Shift Type" value={form.shiftDetails.shiftType} onChange={(e) => update("shiftDetails", "shiftType", e.target.value)} options={["Day Shift", "Evening Shift"]} />
+                            {form.shiftDetails.shiftType === "Evening Shift" && (
+                                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-5 pt-4 border-t">
+                                    <InputGroup id="experienceYears" name="experienceYears" label="Exp (Years)" type="number" value={form.shiftDetails.experienceYears} onChange={(e) => update("shiftDetails", "experienceYears", e.target.value)} />
+                                    <InputGroup id="experienceMonths" name="experienceMonths" label="Exp (Months)" type="number" value={form.shiftDetails.experienceMonths} onChange={(e) => update("shiftDetails", "experienceMonths", e.target.value)} />
+                                    <SelectGroup id="serviceCertificate" name="serviceCertificate" label="NOC attached" value={form.shiftDetails.serviceCertificate} onChange={(e) => update("shiftDetails", "serviceCertificate", e.target.value)} options={["Yes", "No"]} />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 7. CATEGORY DETAILS */}
+                        <SectionHeader icon={Layers} title="Category Details" />
+                        <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                <SelectGroup id="category" name="category" label="22. Category" value={form.categoryDetails.category} onChange={(e) => update("categoryDetails", "category", e.target.value)} options={CATEGORIES} />
+                                <InputGroup id="casteName" name="casteName" label="23. Caste Name" value={form.categoryDetails.casteName} onChange={(e) => update("categoryDetails", "casteName", e.target.value)} required={form.categoryDetails.category !== "GM"} />
+                                <InputGroup id="annualIncome" name="annualIncome" label="24. Annual Income" type="number" value={form.categoryDetails.annualIncome} onChange={(e) => update("categoryDetails", "annualIncome", e.target.value)} />
+                            </div>
+                        </div>
+
+                        {/* 8. CONTACT DETAILS */}
+                        <SectionHeader icon={MapPin} title="Contact Details & Address" />
+                        <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5 border-b pb-5">
+                                <InputGroup id="mobile" name="mobile" label="Student Mobile" value={form.contactDetails.mobile} onChange={(e) => update("contactDetails", "mobile", e.target.value.replace(/\D/g, ''))} required maxLength={10} />
+                                <InputGroup id="parentMobile" name="parentMobile" label="Parent Mobile" value={form.contactDetails.parentMobile} onChange={(e) => update("contactDetails", "parentMobile", e.target.value.replace(/\D/g, ''))} required maxLength={10} />
+                                <InputGroup id="email" name="email" label="E-mail" type="email" value={form.contactDetails.email} onChange={(e) => update("contactDetails", "email", e.target.value)} required />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                <InputGroup id="address" name="address" label="Postal Address" value={form.contactDetails.address} onChange={(e) => update("contactDetails", "address", e.target.value)} required className="md:col-span-3" />
+                                <SelectGroup id="state" name="state" label="State" value={form.contactDetails.state} onChange={(e) => update("contactDetails", "state", e.target.value)} options={STATES} />
+                                <SelectGroup id="district" name="district" label="District" value={form.contactDetails.district} onChange={(e) => update("contactDetails", "district", e.target.value)} options={KARNATAKA_DISTRICTS} />
+                                <InputGroup id="pincode" name="pincode" label="Pincode" value={form.contactDetails.pincode} onChange={(e) => update("contactDetails", "pincode", e.target.value.replace(/\D/g, ''))} required maxLength={6} />
+                            </div>
+                        </div>
+
+                        {/* --- STEP 6: DISABLE SSLC EDITING --- */}
+                        <SectionHeader icon={BookOpen} title="25. Educational Particulars" />
+                        <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5 border-b pb-5">
+                                <InputGroup id="sslcRegisterNumber" name="sslcRegisterNumber" label="A) SSLC Reg No" value={form.educationalParticulars.sslcRegisterNumber} disabled={true} className="bg-slate-100" />
+                                <InputGroup id="sslcPassingYear" name="sslcPassingYear" label="Year of Passing" value={form.educationalParticulars.sslcPassingYear} onChange={(e) => update("educationalParticulars", "sslcPassingYear", e.target.value)} required />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
+                                <InputGroup id="sslcMaxMarks" name="sslcMaxMarks" label="Total Max Marks" type="number" value={form.educationalParticulars.sslcMaxMarks} onChange={(e) => update("educationalParticulars", "sslcMaxMarks", e.target.value)} />
+                                <InputGroup id="sslcObtainedMarks" name="sslcObtainedMarks" label="Total Obtained" type="number" value={form.educationalParticulars.sslcObtainedMarks} onChange={(e) => update("educationalParticulars", "sslcObtainedMarks", e.target.value)} />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <InputGroup id="totalMaxScienceMaths" name="totalMaxScienceMaths" label="Total Max (Sci+Math)" value={form.educationalParticulars.totalMaxScienceMaths} disabled={true} className="bg-slate-100" />
+                                <InputGroup id="totalObtainedScienceMaths" name="totalObtainedScienceMaths" label="Total Obtained (Sci+Math)" value={form.educationalParticulars.totalObtainedScienceMaths} disabled={true} className="bg-slate-100" />
+                            </div>
+                        </div>
+
+                        {/* 10. DECLARATION */}
+                        <SectionHeader icon={CheckCircle} title="Declaration" />
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+                            <div className="flex items-start gap-3 mb-6">
+                                <input type="checkbox" checked={declarationChecked} onChange={(e) => setDeclarationChecked(e.target.checked)} className="mt-1.5 w-5 h-5 text-blue-600 rounded" />
+                                <label className="text-sm font-bold text-slate-800">We declare that the information provided is true and correct.</label>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <InputGroup id="candidateSignatureText" name="candidateSignatureText" label="Candidate Name" value={form.declaration.candidateSignatureText} onChange={(e) => update("declaration", "candidateSignatureText", e.target.value)} required />
+                                <InputGroup id="parentSignatureText" name="parentSignatureText" label="Parent Name" value={form.declaration.parentSignatureText} onChange={(e) => update("declaration", "parentSignatureText", e.target.value)} required />
+                            </div>
+                        </div>
+
+                        {/* --- STEP 5: UPDATE BUTTON --- */}
+                        <div className="mt-8 flex justify-center">
+                            <button 
+                                type="button" 
+                                onClick={submitUpdate} 
+                                disabled={submitting} 
+                                className={`w-full md:w-2/3 lg:w-1/2 flex items-center justify-center gap-2 px-6 py-4 rounded-lg font-bold text-lg text-white shadow-lg transition-all ${submitting ? "bg-slate-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"}`}
+                            >
+                                {submitting ? "Updating..." : <><CheckCircle className="w-5 h-5" /> Update Application</>}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}

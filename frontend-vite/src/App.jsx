@@ -6,7 +6,6 @@ import DashboardRedirect from "./components/DashboardRedirect";
 import Landing from "./pages/Landing";
 import Unauthorized from "./pages/Unauthorized";
 
-
 import RequireRole from "./auth/RequireRole";
 
 // ================= ADMIN =================
@@ -17,6 +16,7 @@ import CreateUser from "./pages/admin/SeatManage";
 import AdminAdmissionControl from "./pages/admin/AdminAdmissionControl";
 import ExamQuestion from "./pages/admin/ExamQuestions";
 import ExamControl from "./pages/admin/ExamControl";
+
 // ================= STUDENT =================
 import StudentDashboard from "./pages/student/StudentDashboard";
 import AdmissionForm from "./pages/student/AdmissionForm";
@@ -29,14 +29,15 @@ import FinalApproval from "./pages/verification/FinalApproval";
 import MeritList from "./pages/verification/MeritList";
 import SeatAllocation from "./pages/verification/SeatAllocation";
 import OfficerDashboard from "./pages/verification/OfficerDashboard";
-
+import ApplicationForm from "./pages/verification/ApplicationForm";
+import AcknowledgementPage from "./pages/verification/AcknowledgementPage";
+import UpdateApplication from "./pages/verification/UpdateApplication";
 // GLOBAL SHELL
 import AppShell from "./layout/AppShell";
 
 export default function App() {
   return (
     <AppShell>
-
       <RoleBasedNavbar />
 
       <Routes>
@@ -59,7 +60,7 @@ export default function App() {
           <Route path="s-manage" element={<CreateUser />} />
           <Route path="admission-control" element={<AdminAdmissionControl />} />
           <Route path="exam-questions" element={<ExamQuestion />} />
-<Route path="exam-control" element={<ExamControl />} />
+          <Route path="exam-control" element={<ExamControl />} />
         </Route>
 
         {/* ===== STUDENT ===== */}
@@ -80,6 +81,7 @@ export default function App() {
             </RequireRole>
           }
         />
+
         <Route
           path="/student/exam"
           element={
@@ -89,17 +91,52 @@ export default function App() {
           }
         />
 
+
         {/* ===== VERIFICATION OFFICER ===== */}
+
+        {/* IMPORTANT: changed base path to avoid conflict */}
         <Route
-          path="/verification"
+          path="/verification-home"
           element={
             <RequireRole allowedRoles={["verification_officer"]}>
               <VerifyApplications />
             </RequireRole>
           }
         />
+<Route
+  path="/verification/acknowledgement"
+  element={
+    <RequireRole allowedRoles={["verification_officer"]}>
+      <AcknowledgementPage />
+    </RequireRole>
+  }
+/>
+<Route
+  path="/verification/update"
+  element={
+    <RequireRole allowedRoles={["verification_officer"]}>
+      <UpdateApplication />
+    </RequireRole>
+  }
+/>
 
-        
+        <Route
+          path="/verification/applicationform"
+          element={
+            <RequireRole allowedRoles={["verification_officer"]}>
+              <ApplicationForm />
+            </RequireRole>
+          }
+        />
+
+        <Route
+          path="/verification/dashboard"
+          element={
+            <RequireRole allowedRoles={["verification_officer"]}>
+              <OfficerDashboard />
+            </RequireRole>
+          }
+        />
 
         <Route
           path="/verification/merit"
@@ -136,17 +173,7 @@ export default function App() {
             </RequireRole>
           }
         />
-
-        <Route
-          path="/verification/dashboard"
-          element={
-            <RequireRole allowedRoles={["verification_officer"]}>
-              <OfficerDashboard />
-            </RequireRole>
-          }
-        />
       </Routes>
-
     </AppShell>
   );
 }
