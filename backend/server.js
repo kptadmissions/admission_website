@@ -11,7 +11,6 @@ import meritRoutes from "./routes/merit.routes.js";
 import examRoutes from "./routes/exam.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import userRoutes from "./routes/user.routes.js";
-// import applicationRoutes from "./routes/application.routes.js";
 import seatRoutes from "./routes/seat.routes.js";
 import studentSeatRoutes from "./routes/student-seat.routes.js";
 import verificationRoutes from "./routes/verification.routes.js";
@@ -22,12 +21,15 @@ import adminSeatRoutes from "./routes/admin.seat.routes.js";
 import pdfRoutes from "./routes/pdf.routes.js";
 import adminAdmissionRoutes from "./routes/admin.admission.routes.js";
 
+// =============================
+// ✅ INITIALIZE APP
+// =============================
 const app = express();
 
 // =============================
-// ✅ CONNECT DATABASE
+// ✅ CONNECT DATABASE (IMPORTANT FIX)
 // =============================
-connectDB();
+await connectDB();
 
 // =============================
 // ✅ MIDDLEWARES
@@ -62,7 +64,7 @@ app.use("/api/admission", adminAdmissionRoutes);
 // ✅ ROOT ROUTE
 // =============================
 app.get("/", (req, res) => {
-  res.send("🚀 KPT Admissions Backend Running");
+  res.send("🚀 KPT Admissions Backend Running on Vercel");
 });
 
 // =============================
@@ -88,10 +90,6 @@ app.use((err, req, res, next) => {
 });
 
 // =============================
-// ✅ START SERVER
+// ✅ EXPORT (VERY IMPORTANT FOR VERCEL)
 // =============================
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
-});
+export default app;
