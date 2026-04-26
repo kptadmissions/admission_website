@@ -21,26 +21,50 @@ import adminSeatRoutes from "./routes/admin.seat.routes.js";
 import pdfRoutes from "./routes/pdf.routes.js";
 import adminAdmissionRoutes from "./routes/admin.admission.routes.js";
 
-// =============================
-// ✅ INITIALIZE APP
-// =============================
 const app = express();
 
 // =============================
-// ✅ CONNECT DATABASE (IMPORTANT FIX)
+// ✅ CONNECT DATABASE
 // =============================
 await connectDB();
 
 // =============================
-// ✅ MIDDLEWARES
+// ✅ CORS (ONLY ONE - CLEAN)
 // =============================
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://kptadmissions.vercel.app"
+];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "*",
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, false); // don't crash server
+    }
+  },
   credentials: true,
 }));
 
-app.use(express.json({ limit: "10mb" }));
+// =============================
+// ✅ HANDLE PREFLIGHT (SAFE)
+// =============================
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.header("Access-Control-Allow-Credentials", "true");
+    return res.sendStatus(200);
+  }
+  next();
+});
 
+// =============================
+// ✅ MIDDLEWARES
+// =============================
+app.use(express.json({ limit: "10mb" }));
 app.use(clerkMiddleware());
 
 // =============================
@@ -61,14 +85,14 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/admission", adminAdmissionRoutes);
 
 // =============================
-// ✅ ROOT ROUTE
+// ✅ ROOT
 // =============================
 app.get("/", (req, res) => {
   res.send("🚀 KPT Admissions Backend Running on Vercel");
 });
 
 // =============================
-// ✅ 404 HANDLER
+// ✅ 404
 // =============================
 app.use((req, res) => {
   res.status(404).json({
@@ -78,7 +102,7 @@ app.use((req, res) => {
 });
 
 // =============================
-// ✅ GLOBAL ERROR HANDLER
+// ✅ ERROR HANDLER
 // =============================
 app.use((err, req, res, next) => {
   console.error("🔥 Server Error:", err);
@@ -90,6 +114,16 @@ app.use((err, req, res, next) => {
 });
 
 // =============================
-// ✅ EXPORT (VERY IMPORTANT FOR VERCEL)
+// ✅ LOCAL SERVER (ONLY LOCAL)
+// =============================
+if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+  });
+}
+
+// =============================
+// ✅ EXPORT (FOR VERCEL)
 // =============================
 export default app;
