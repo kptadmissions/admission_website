@@ -41,32 +41,39 @@ export default function UserManagement() {
     fetchUsers();
   }, []);
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    setCreating(true);
+ const handleCreate = async (e) => {
+  e.preventDefault();
+  setCreating(true);
 
-    try {
-      const token = await getToken();
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/users`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(createForm),
-      });
+  try {
+    const token = await getToken();
 
-      if (!res.ok) throw new Error();
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(createForm),
+    });
 
-      toast.success("Staff user created");
-      setCreateForm({ email: "", role: "verification_officer" });
-      fetchUsers();
-    } catch {
-      toast.error("Failed to create user");
-    } finally {
-      setCreating(false);
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || "Something went wrong");
     }
-  };
+
+    toast.success(data.message || "Staff user created");
+
+    setCreateForm({ email: "", role: "verification_officer" });
+    fetchUsers();
+
+  } catch (err) {
+    toast.error(err.message); // ✅ SHOW REAL ERROR
+  } finally {
+    setCreating(false);
+  }
+};
 
   const updateRole = async (id, role) => {
     try {

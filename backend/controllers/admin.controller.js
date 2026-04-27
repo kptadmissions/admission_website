@@ -25,17 +25,26 @@ export const createUser = async (req, res) => {
     return res.status(400).json({ error: "Email & role required" });
   }
 
-  // Strict check: Only allow creating Staff
   if (!STAFF_ROLES.includes(role)) {
     return res.status(400).json({ error: "Invalid role selected" });
   }
 
-  const exists = await User.findOne({ email });
-  if (exists) {
-    return res.status(409).json({ error: "User already exists" });
+  let user = await User.findOne({ email });
+
+  // ✅ IF EXISTS → UPDATE ROLE (NO ERROR)
+  if (user) {
+    user.role = role;
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: "User already exists, role updated",
+      user,
+    });
   }
 
-  const user = await User.create({ email, role });
+  // ✅ IF NOT EXISTS → CREATE
+  user = await User.create({ email, role });
 
   res.status(201).json({
     success: true,
