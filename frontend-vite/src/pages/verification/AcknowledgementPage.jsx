@@ -536,7 +536,7 @@ export default function AcknowledgementPage() {
               </div>
               <div className="text-center" style={{ width: '200px' }}>
                 <div style={{ borderTop: '1px solid black', paddingTop: '5px' }}>
-                  <p className="font-bold uppercase" style={{ fontSize: '10px' }}>Dean / Nodal Officer</p>
+                  <p className="font-bold uppercase" style={{ fontSize: '10px' }}>Dean(Acadamic) / Nodal Officer</p>
                 </div>
               </div>
             </div>
@@ -549,6 +549,7 @@ export default function AcknowledgementPage() {
                 <li>3. Bring a valid Government ID proof (Aadhaar Card/Passport) for verification.</li>
                 <li>4. Mobile phones, calculators, or any electronic gadgets are strictly prohibited.</li>
                 <li>5. Candidates must follow all instructions provided by the invigilator.</li>
+                <li>6. Candidates Must carry exam pad.</li>
               </ul>
             </div>
             
