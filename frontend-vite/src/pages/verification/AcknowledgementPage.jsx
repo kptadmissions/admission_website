@@ -21,7 +21,6 @@ export default function AcknowledgementPage() {
   };
 
   const downloadPDF = async () => {
-    // Changed selector to capture BOTH pages wrapped in the parent div
     const element = document.querySelector("#printable-document");
 
     const studentName = data?.basicDetails?.name || "Student";
@@ -31,19 +30,21 @@ export default function AcknowledgementPage() {
     await waitForImages();
 
     const opt = {
-      margin: 0,
+      margin: [0, 0, 0, 0],
       filename: filename,
       image: { type: "jpeg", quality: 1 },
       html2canvas: {
-        scale: 4,
+        scale: 3,
         useCORS: true,
-        allowTaint: false,
       },
       jsPDF: {
         unit: "mm",
         format: "a4",
         orientation: "portrait",
       },
+      pagebreak: {
+        mode: ['avoid-all', 'css', 'legacy']
+      }
     };
 
     html2pdf().set(opt).from(element).save();
@@ -91,10 +92,10 @@ export default function AcknowledgementPage() {
             .print-hidden { display: none !important; }
             .a4-container { margin: 0 !important; border: none !important; box-shadow: none !important; width: 210mm !important; height: 297mm !important; overflow: hidden; }
           }
-          
+        
           .a4-container {
             width: 210mm;
-            height: 297mm;
+            min-height: 297mm;
             margin: 0 auto;
             background: white;
             box-sizing: border-box;
@@ -102,21 +103,18 @@ export default function AcknowledgementPage() {
             padding: 10mm 15mm;
             color: black;
             position: relative;
+            overflow: visible;
           }
-
-          /* Hall Ticket Table Styles */
           .ht-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
           .ht-table th, .ht-table td { border: 1px solid black; padding: 10px; text-align: left; font-size: 12px; }
           .ht-table th { background-color: #f2f2f2; width: 35%; }
-
-          /* Header Layout */
+       
           .header-wrapper { display: flex; flex-direction: column; align-items: center; margin-bottom: 10px; }
           .govt-logo { width: 50px; height: 50px; object-fit: contain; margin-bottom: 5px; }
           .header-main-flex { display: flex; align-items: center; justify-content: space-between; width: 100%; }
           .college-logo { width: 85px; height: 85px; object-fit: contain; }
           .header-center-text { text-align: center; flex: 1; }
 
-          /* Field Alignment */
           .field-row { display: flex; gap: 12px; margin-bottom: 6px; width: 100%; align-items: baseline; }
           .field-item { display: flex; white-space: nowrap; align-items: baseline; flex-shrink: 0; }
           .field-label { font-size: 11px; font-weight: normal; color: #000; }
@@ -129,7 +127,6 @@ export default function AcknowledgementPage() {
         `}
       </style>
 
-      {/* Search Bar */}
       <div className="max-w-2xl mx-auto mb-6 p-4 bg-white rounded shadow-md print-hidden flex gap-3">
         <input
           type="text"
@@ -155,9 +152,7 @@ export default function AcknowledgementPage() {
 
       {data && (
         <div id="printable-document">
-          {/* PAGE 1: ACKNOWLEDGEMENT (UNCHANGED) */}
           <div className="a4-container">
-            {/* Header Section */}
             <div className="header-wrapper">
               <img src="/Seal_of_Karnataka.png" alt="Govt Logo" className="govt-logo" />
               <div className="header-main-flex">
@@ -172,14 +167,12 @@ export default function AcknowledgementPage() {
               </div>
             </div>
 
-            {/* Form Title */}
             <div className="text-center mb-4 py-1" style={{ borderTop: '1.5px solid black', borderBottom: '1.5px solid black' }}>
               <p style={{ fontSize: '10px' }} className="font-bold uppercase">
                 APPLICATION FORM FOR ONLINE ADMISSION TO FIRST YEAR DIPLOMA COURSES FOR THE YEAR 2026-27
               </p>
             </div>
 
-            {/* Profile Section */}
             <div style={{ display: 'flex', gap: '20px', marginBottom: '8px' }}>
               <div className="flex-1">
                 <div className="field-row">
@@ -192,17 +185,25 @@ export default function AcknowledgementPage() {
                     <span className="field-value">{data.educationalParticulars?.sslcRegisterNumber}</span>
                   </div>
                 </div>
+                <div className="field-row">
+                  <div className="field-item flex-1">
+                    <span className="field-label">3. Aadhaar Number:</span>
+                    <span className="field-value">
+                      {data.basicDetails?.aadharNumber || "-"}
+                    </span>
+                  </div>
+                </div>
 
                 <div className="field-row">
                   <div className="field-item flex-1">
-                    <span className="field-label">3. Name of the Candidate:</span>
+                    <span className="field-label">4. Name of the Candidate:</span>
                     <span className="field-value">{data.basicDetails?.name}</span>
                   </div>
                 </div>
 
                 <div className="field-row">
                   <div className="field-item flex-1">
-                    <span className="field-label">4. Date of Birth:</span>
+                    <span className="field-label">5. Date of Birth:</span>
                     <span className="field-value">
                       {data.basicDetails?.dob ? new Date(data.basicDetails.dob).toISOString().split('T')[0] : ""}
                     </span>
@@ -211,18 +212,18 @@ export default function AcknowledgementPage() {
 
                 <div className="field-row">
                   <div className="field-item flex-1">
-                    <span className="field-label">5. Father Name:</span>
+                    <span className="field-label">6. Father Name:</span>
                     <span className="field-value">{data.basicDetails?.fatherName}</span>
                   </div>
                 </div>
 
                 <div className="field-row">
                   <div className="field-item flex-1">
-                    <span className="field-label">6. Mother Name:</span>
+                    <span className="field-label">7. Mother Name:</span>
                     <span className="field-value">{data.basicDetails?.motherName}</span>
                   </div>
                   <div className="field-item flex-1">
-                    <span className="field-label">7. Gender:</span>
+                    <span className="field-label">8. Gender:</span>
                     <span className="field-value">{data.basicDetails?.gender}</span>
                   </div>
                 </div>
@@ -253,74 +254,73 @@ export default function AcknowledgementPage() {
               </div>
             </div>
 
-            {/* Grid Rows */}
             <div className="field-row">
               <div className="field-item flex-1">
                 <span className="field-label">10. Indian Nationality:</span>
-                <span className="field-value">{data.basicDetails?.nationality === "Yes" ? "INDIAN" : "NO"}</span>
+                <span className="field-value">{(data.basicDetails?.nationality || "").toUpperCase()}</span>
               </div>
               <div className="field-item flex-1">
                 <span className="field-label">11. Religion:</span>
                 <span className="field-value">{data.basicDetails?.religion}</span>
               </div>
               <div className="field-item flex-1">
-                <span className="field-label">13. Year of Passing:</span>
+                <span className="field-label">12. Year of Passing:</span>
                 <span className="field-value">{data.educationalParticulars?.sslcPassingYear}</span>
               </div>
             </div>
 
             <div className="field-row">
               <div className="field-item flex-1">
-                <span className="field-label">14. Qualifying Exam Code:</span>
+                <span className="field-label">13. Qualifying Exam Code:</span>
                 <span className="field-value">{data.qualifyingDetails?.qualifyingExam}</span>
               </div>
               <div className="field-item flex-1">
-                <span className="field-label">15. Native State Code:</span>
+                <span className="field-label">14. Native State Code:</span>
                 <span className="field-value">{data.qualifyingDetails?.nativeState}</span>
               </div>
               <div className="field-item flex-1">
-                <span className="field-label">16. Native District Code:</span>
+                <span className="field-label">15. Native District Code:</span>
                 <span className="field-value">{data.qualifyingDetails?.nativeDistrict}</span>
               </div>
             </div>
 
             <div className="field-row">
               <div className="field-item flex-1">
-                <span className="field-label">17. SSLC State Appearance:</span>
+                <span className="field-label">16. SSLC State Appearance:</span>
                 <span className="field-value">{data.studyEligibility?.stateAppearedForQualifyingExam}</span>
               </div>
               <div className="field-item flex-1">
-                <span className="field-label">18. SSLC District Appearance:</span>
+                <span className="field-label">17. SSLC District Appearance:</span>
                 <span className="field-value">{data.contactDetails?.district}</span>
               </div>
             </div>
 
             <div className="field-row" style={{ marginTop: '5px' }}>
               <div className="field-item flex-1">
-                <span className="field-label">19. Yrs Studied in KA:</span>
+                <span className="field-label">18. Yrs Studied in KA:</span>
                 <span className="field-value">{data.studyEligibility?.yearsStudiedInKarnataka}</span>
               </div>
               <div className="field-item flex-1">
-                <span className="field-label">20. Max Marks:</span>
+                <span className="field-label">19. Max Marks:</span>
                 <span className="field-value">{formatMarks(data.educationalParticulars?.sslcMaxMarks)}</span>
               </div>
               <div className="field-item flex-1">
-                <span className="field-label">21. Obt Marks:</span>
+                <span className="field-label">20. Obt Marks:</span>
                 <span className="field-value">{formatMarks(data.educationalParticulars?.sslcObtainedMarks)}</span>
               </div>
               <div className="field-item flex-1">
-                <span className="field-label">22. %:</span>
+                <span className="field-label">21. %:</span>
                 <span className="field-value">{calculatePercentage(data.educationalParticulars?.sslcObtainedMarks, data.educationalParticulars?.sslcMaxMarks)}</span>
               </div>
             </div>
 
             <div className="field-row">
               <div className="field-item flex-1">
-                <span className="field-label">23. Marks in Maths:</span>
+                <span className="field-label">22. Marks in Maths:</span>
                 <span className="field-value">{formatMarks(data.educationalParticulars?.obtainedMathsMarks)}</span>
               </div>
               <div className="field-item flex-1">
-                <span className="field-label">Max Marks in Maths:</span>
+                <span className="field-label">23. Max Marks in Maths:</span>
                 <span className="field-value">{formatMarks(data.educationalParticulars?.maxMathsMarks)}</span>
               </div>
             </div>
@@ -331,28 +331,28 @@ export default function AcknowledgementPage() {
                 <span className="field-value">{formatMarks(data.educationalParticulars?.obtainedScienceMarks)}</span>
               </div>
               <div className="field-item flex-1">
-                <span className="field-label">Max Marks in Science:</span>
+                <span className="field-label">25. Max Marks in Science:</span>
                 <span className="field-value">{formatMarks(data.educationalParticulars?.maxScienceMarks)}</span>
               </div>
             </div>
 
             <div className="field-row">
               <div className="field-item flex-1">
-                <span className="field-label">25. Total Max Marks in Science & Maths:</span>
+                <span className="field-label">26. Total Max Marks in Science & Maths:</span>
                 <span className="field-value">{formatMarks(data.educationalParticulars?.totalMaxScienceMaths)}</span>
               </div>
               <div className="field-item flex-1">
-                <span className="field-label">26. Total Marks Obtained in Science & Maths:</span>
+                <span className="field-label">27. Total Marks Obtained in Science & Maths:</span>
                 <span className="field-value">{formatMarks(data.educationalParticulars?.totalObtainedScienceMaths)}</span>
               </div>
             </div>
 
             <div className="field-row">
               <div className="field-item flex-1">
-                <span className="field-label">27. 5yr Exemption Rule:</span>
-                <span className="field-value">{data.exemptionClaims?.isFiveYearExemption?.toUpperCase()}</span>
+                <span className="field-label">28. 5yr Exemption Rule:</span>
+                <span className="field-value">{(data.exemptionClaims?.isFiveYearExemption || "").toUpperCase()}</span>
               </div>
-              {data.exemptionClaims?.isFiveYearExemption?.toUpperCase() === "YES" && (
+              {(data.exemptionClaims?.isFiveYearExemption || "").toUpperCase() === "YES" && (
                 <div className="field-item flex-1">
                   <span className="field-label">Clause:</span>
                   <span className="field-value">{data.exemptionClaims?.exemptionClause || "-"}</span>
@@ -371,38 +371,62 @@ export default function AcknowledgementPage() {
               </div>
               <div className="field-item flex-1">
                 <span className="field-label">31. SNQ:</span>
-                <span className="field-value">{data.exemptionClaims?.isSNQ?.toUpperCase()}</span>
+                <span className="field-value">{(data.exemptionClaims?.isSNQ || "").toUpperCase()}</span>
               </div>
             </div>
 
             <div className="field-row">
               <div className="field-item flex-1">
-                <span className="field-label">37. Category:</span>
+                <span className="field-label">32. Category:</span>
                 <span className="field-value">{data.categoryDetails?.category}</span>
               </div>
               <div className="field-item flex-1">
-                <span className="field-label">38. Caste:</span>
+                <span className="field-label">33. Caste:</span>
                 <span className="field-value">{data.categoryDetails?.casteName || "-"}</span>
               </div>
               <div className="field-item flex-1">
-                <span className="field-label">39. Income:</span>
+                <span className="field-label">34. Income:</span>
                 <span className="field-value">{data.categoryDetails?.annualIncome}</span>
               </div>
             </div>
+            {(data.shiftDetails?.shiftType || "").toUpperCase().includes("EVENING") && (
+              <div className="field-row">
+                <div className="field-item flex-1">
+                  <span className="field-label">35. Shift:</span>
+                  <span className="field-value">EVENING</span>
+                </div>
+
+                <div className="field-item flex-1">
+                  <span className="field-label">36. Experience:</span>
+                  <span className="field-value">
+                    {data.shiftDetails?.experienceYears || 0}Y {data.shiftDetails?.experienceMonths || 0}M
+                  </span>
+                </div>
+
+                <div className="field-item flex-1">
+                  <span className="field-label">37. Service Certificate:</span>
+                  <span className="field-value">
+                    {(data.shiftDetails?.serviceCertificate || "").toUpperCase() === "YES"
+                      ? "PROVIDED"
+                      : "NOT PROVIDED"}
+                  </span>
+                </div>
+              </div>
+            )}
 
             <div className="field-row">
               <div className="field-item flex-1">
-                <span className="field-label">40. 371(J) HK Claim:</span>
+                <span className="field-label">38. HK Claim:</span>
                 <span className="field-value">{data.exemptionClaims?.isHyderabadKarnataka?.toUpperCase()}</span>
               </div>
               <div className="field-item flex-1">
-                <span className="field-label">41. * Special Category:</span>
+                <span className="field-label">39. * Special Category:</span>
                 <span className="field-value">{getSpecialCategories(data.specialCategory) || "NONE"}</span>
               </div>
             </div>
 
             <div className="border-black p-2 mt-3">
-              <p className="field-label font-bold mb-1">8. Residential Address</p>
+              <p className="field-label font-bold mb-1">40. Residential Address</p>
               <p className="field-value" style={{ marginLeft: 0, lineHeight: '1.4' }}>{data.contactDetails?.address}</p>
               <div className="field-item mt-2">
                 <span className="field-label">Pincode:</span>
@@ -454,8 +478,7 @@ export default function AcknowledgementPage() {
             </div>
           </div>
 
-          {/* PAGE 2: HALL TICKET (NEW) */}
-          <div className="a4-container" style={{ pageBreakBefore: "always" }}>
+          <div className="a4-container">
             <div className="header-wrapper">
               <img src="/Seal_of_Karnataka.png" alt="Govt Logo" className="govt-logo" />
               <div className="header-main-flex">
