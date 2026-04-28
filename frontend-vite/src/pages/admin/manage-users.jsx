@@ -14,6 +14,7 @@ export default function UserManagement() {
   const [search, setSearch] = useState("");
 
   const [createForm, setCreateForm] = useState({
+    name: "", // Added name
     email: "",
     role: "verification_officer",
   });
@@ -41,39 +42,40 @@ export default function UserManagement() {
     fetchUsers();
   }, []);
 
- const handleCreate = async (e) => {
-  e.preventDefault();
-  setCreating(true);
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    setCreating(true);
 
-  try {
-    const token = await getToken();
+    try {
+      const token = await getToken();
 
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/users`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(createForm),
-    });
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/users`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(createForm),
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (!res.ok) {
-      throw new Error(data.error || "Something went wrong");
+      if (!res.ok) {
+        throw new Error(data.error || "Something went wrong");
+      }
+
+      toast.success(data.message || "Staff user created");
+
+      // Reset including name
+      setCreateForm({ name: "", email: "", role: "verification_officer" });
+      fetchUsers();
+
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setCreating(false);
     }
-
-    toast.success(data.message || "Staff user created");
-
-    setCreateForm({ email: "", role: "verification_officer" });
-    fetchUsers();
-
-  } catch (err) {
-    toast.error(err.message); // ✅ SHOW REAL ERROR
-  } finally {
-    setCreating(false);
-  }
-};
+  };
 
   const updateRole = async (id, role) => {
     try {
@@ -111,8 +113,10 @@ export default function UserManagement() {
     }
   };
 
+  // Improved search to include name and email
   const filteredUsers = users.filter(u =>
-    u.email.toLowerCase().includes(search.toLowerCase())
+    u.email.toLowerCase().includes(search.toLowerCase()) ||
+    (u.name && u.name.toLowerCase().includes(search.toLowerCase()))
   );
 
   return (
@@ -139,7 +143,17 @@ export default function UserManagement() {
           <UserPlus /> Create Staff
         </h2>
 
-        <form onSubmit={handleCreate} className="grid md:grid-cols-3 gap-4">
+        {/* Updated grid-cols-4 to keep fields in a single row */}
+        <form onSubmit={handleCreate} className="grid md:grid-cols-4 gap-4">
+          <input
+            type="text"
+            required
+            placeholder="Full Name"
+            value={createForm.name}
+            onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+            className="border rounded-xl px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+          />
+
           <input
             type="email"
             required
@@ -177,7 +191,7 @@ export default function UserManagement() {
           <h3 className="font-semibold">Staff List</h3>
 
           <input
-            placeholder="Search email..."
+            placeholder="Search name or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="border rounded-xl px-4 py-2 focus:ring-2 focus:ring-indigo-500"
@@ -190,6 +204,7 @@ export default function UserManagement() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
+                <th className="p-4 text-left">Name</th>
                 <th className="p-4 text-left">Email</th>
                 <th>Role</th>
                 <th>Update</th>
@@ -209,16 +224,17 @@ export default function UserManagement() {
                     transition={{ delay: i * .05 }}
                     className="border-b hover:bg-indigo-50"
                   >
-                    <td className="p-4 font-medium">{u.email}</td>
+                    <td className="p-4 font-medium">{u.name || "N/A"}</td>
+                    <td className="p-4 text-gray-600">{u.email}</td>
 
-                    <td>
+                    <td className="text-center">
                       <span className={`px-3 py-1 rounded-full text-xs font-bold
                         ${isAdmin ? "bg-red-100 text-red-700" : "bg-indigo-100 text-indigo-700"}`}>
                         {u.role}
                       </span>
                     </td>
 
-                    <td>
+                    <td className="text-center">
                       {!isAdmin && (
                         <select
                           value={u.role}

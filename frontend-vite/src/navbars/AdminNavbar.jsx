@@ -24,12 +24,12 @@ export default function AdminNavbar() {
           <Link to="/admin/manage-users" className={active("/admin/manage-users")}>
             Manage Users
           </Link>
-          <Link to="/admin/s-manage" className={active("/admin/s-manage")}>
+       {/*    <Link to="/admin/s-manage" className={active("/admin/s-manage")}>
             Seat Management
           </Link>
           <Link to="/admin/admission-control">Admission Control</Link>
           <Link to="/admin/exam-questions">Exam Questions</Link>
-          <Link to="/admin/exam-control">Exam Control</Link>
+          <Link to="/admin/exam-control">Exam Control</Link> */}
 
           <UserButton afterSignOutUrl="/" />
         </div>

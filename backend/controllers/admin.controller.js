@@ -9,20 +9,21 @@ export const getAllUsers = async (req, res) => {
     role: { $in: STAFF_ROLES } 
   }).sort({ createdAt: -1 });
 
-  res.json(
-    users.map((u) => ({
-      id: u._id,
-      email: u.email,
-      role: u.role,
-    }))
-  );
+ res.json(
+  users.map((u) => ({
+    id: u._id,
+    name: u.name,   // ✅ ADD THIS LINE
+    email: u.email,
+    role: u.role,
+  }))
+);
 };
 
 export const createUser = async (req, res) => {
-  const { email, role } = req.body;
+  const { name, email, role } = req.body;
 
-  if (!email || !role) {
-    return res.status(400).json({ error: "Email & role required" });
+  if (!name || !email || !role) {
+    return res.status(400).json({ error: "Name, Email & role required" });
   }
 
   if (!STAFF_ROLES.includes(role)) {
@@ -31,20 +32,21 @@ export const createUser = async (req, res) => {
 
   let user = await User.findOne({ email });
 
-  // ✅ IF EXISTS → UPDATE ROLE (NO ERROR)
+  // ✅ IF EXISTS → UPDATE
   if (user) {
     user.role = role;
+    user.name = name; // ✅ update name also
     await user.save();
 
     return res.json({
       success: true,
-      message: "User already exists, role updated",
+      message: "User already exists, updated",
       user,
     });
   }
 
-  // ✅ IF NOT EXISTS → CREATE
-  user = await User.create({ email, role });
+  // ✅ CREATE NEW
+  user = await User.create({ name, email, role });
 
   res.status(201).json({
     success: true,
