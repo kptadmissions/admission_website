@@ -39,13 +39,8 @@ export default function Landing() {
         <div className="space-y-5 text-center md:text-left">
 
           {/* Static Admission Status */}
-          <span className="px-4 py-2 rounded-full bg-green-100 text-green-700 text-xs font-bold animate-pulse inline-block">
-            ADMISSIONS OPEN
-          </span>
-
-          <p className="uppercase tracking-widest text-indigo-600 font-semibold text-sm">
-            Government Polytechnic Institution
-          </p>
+         
+          
 
           <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800 break-words leading-snug">
             KARNATAKA (GOVT.) POLYTECHNIC, MANGALORE
