@@ -56,3 +56,21 @@
   width: 210mm;
   min-height: 297mm;   /* ✅ change from height → min-height */
 }
+.ht-official-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 15px;
+  font-size: 10.5px;   /* 🔥 smaller */
+}
+
+.ht-official-table th,
+.ht-official-table td {
+  border: 1px solid black;
+  padding: 6px;       /* 🔥 tighter */
+  text-align: left;
+  font-weight: normal; /* 🔥 remove extra bold */
+}
+
+.ht-official-table th {
+  font-weight: bold;
+}

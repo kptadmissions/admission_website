@@ -119,7 +119,6 @@ const applicationSchema = new mongoose.Schema({
     annualIncome: Number
   },
 
-  // ================================
   // 8. CONTACT DETAILS
   // ================================
   contactDetails: {

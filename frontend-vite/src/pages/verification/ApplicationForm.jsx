@@ -236,74 +236,152 @@ const toggleCheck = (section, field) => {
 };
 
 const validateForm = () => {
+    console.log("=== STARTING FORM VALIDATION ===");
     const { basicDetails, contactDetails, educationalParticulars, declaration } = form;
+
+    // Helper to ensure user ALWAYS sees the error, even if toast fails
+    const showError = (msg) => {
+      console.warn("[Validation Failed]:", msg);
+      try { 
+        toast.error(msg); 
+      } catch (e) { 
+        alert(`Validation Error: ${msg}`); 
+      }
+    };
 
     const requiredBasic = ["aadharNumber", "name", "dob", "gender", "religion"];
     for (let field of requiredBasic) {
-    if (isEmpty(basicDetails[field])) { toast.error(`Please fill basic detail: ${field}`); return false; }
+      if (isEmpty(basicDetails[field])) { 
+        showError(`Please fill basic detail: ${field}`); 
+        return false; 
+      }
     }
 
-    if (basicDetails.aadharNumber?.length !== 12) { toast.error("Aadhaar Number must be exactly 12 digits"); return false; }
+    if (basicDetails.aadharNumber?.length !== 12) { 
+      showError("Aadhaar Number must be exactly 12 digits"); 
+      return false; 
+    }
     
     if (!/^\d{2}-\d{2}-\d{4}$/.test(basicDetails.dob)) {
-    toast.error("Date of Birth must be complete (DD, MM, and 4-digit YYYY)"); return false;
+      showError("Date of Birth must be complete (DD, MM, and 4-digit YYYY)"); 
+      return false;
     }
 
-    if (isEmpty(contactDetails.mobile) || contactDetails.mobile.length !== 10) { toast.error("Student Mobile Number must be exactly 10 digits"); return false; }
-    if (isEmpty(contactDetails.parentMobile) || contactDetails.parentMobile.length !== 10) { toast.error("Parent Mobile Number must be exactly 10 digits"); return false; }
-    if (isEmpty(contactDetails.pincode) || contactDetails.pincode.length !== 6) { toast.error("Pincode must be exactly 6 digits"); return false; }
+    if (isEmpty(contactDetails.mobile) || contactDetails.mobile.length !== 10) { 
+      showError("Student Mobile Number must be exactly 10 digits"); 
+      return false; 
+    }
+    if (isEmpty(contactDetails.parentMobile) || contactDetails.parentMobile.length !== 10) { 
+      showError("Parent Mobile Number must be exactly 10 digits"); 
+      return false; 
+    }
+    if (isEmpty(contactDetails.pincode) || contactDetails.pincode.length !== 6) { 
+      showError("Pincode must be exactly 6 digits"); 
+      return false; 
+    }
 
-    const sslcFields = ['sslcRegisterNumber', 'sslcPassingYear', 'sslcMaxMarks', 'sslcObtainedMarks', 'maxScienceMarks', 'obtainedScienceMarks', 'maxMathsMarks', 'obtainedMathsMarks'];
+    const sslcFields = [
+      'sslcRegisterNumber', 'sslcPassingYear', 'sslcMaxMarks', 'sslcObtainedMarks', 
+      'maxScienceMarks', 'obtainedScienceMarks', 'maxMathsMarks', 'obtainedMathsMarks'
+    ];
     for (let field of sslcFields) {
-    if (isEmpty(educationalParticulars[field])) { toast.error(`Please fill SSLC mark details`); return false; }
+      if (isEmpty(educationalParticulars[field])) { 
+        showError(`Please fill SSLC mark details: ${field.replace(/([A-Z])/g, ' $1').trim()}`); 
+        return false; 
+      }
     }
 
     if (Number(educationalParticulars.sslcObtainedMarks) > Number(educationalParticulars.sslcMaxMarks)) {
-    toast.error("Total Obtained marks cannot be greater than Total Max marks"); return false;
+      showError("Total Obtained marks cannot be greater than Total Max marks"); 
+      return false;
     }
     if (Number(educationalParticulars.obtainedScienceMarks) > Number(educationalParticulars.maxScienceMarks)) {
-    toast.error("Science Obtained marks cannot be greater than Science Max marks"); return false;
+      showError("Science Obtained marks cannot be greater than Science Max marks"); 
+      return false;
     }
     if (Number(educationalParticulars.obtainedMathsMarks) > Number(educationalParticulars.maxMathsMarks)) {
-    toast.error("Maths Obtained marks cannot be greater than Maths Max marks"); return false;
+      showError("Maths Obtained marks cannot be greater than Maths Max marks"); 
+      return false;
     }
 
     if (isEmpty(declaration.candidateSignatureText) || isEmpty(declaration.parentSignatureText)) {
-    toast.error("Please provide both signatures in the declaration section"); return false;
+      showError("Please provide both signatures in the declaration section"); 
+      return false;
     }
 
-    if (!declarationChecked) { toast.error("You must accept the declaration."); return false; }
+    if (!declarationChecked) { 
+      showError("You must accept the declaration."); 
+      return false; 
+    }
 
+    console.log("=== VALIDATION PASSED ===");
     return true;
-};
+  };
 
 const submit = async () => {
-if (!validateForm()) return;
+  console.log("🔥 Submit clicked");
 
-setSubmitting(true);
+  // FORCE UI RESPONSE IMMEDIATELY
+  setSubmitting(true);
 
-try {
+  try {
+    const isValid = validateForm();
+
+    if (!isValid) {
+      console.warn("❌ Validation failed");
+      alert("Please fill all required fields correctly"); // fallback
+      setSubmitting(false);
+      return;
+    }
+
     const token = await getToken();
 
-    await axios.post(
-    `${import.meta.env.VITE_API_URL}/applications/submit`,
-    form,
-    {
-        headers: { Authorization: `Bearer ${token}` }
+    if (!token) {
+      alert("Authentication failed. Please login again.");
+      setSubmitting(false);
+      return;
     }
+
+    console.log("✅ Token:", token);
+    console.log("📤 Sending data:", form);
+    console.log("🌐 API:", `${import.meta.env.VITE_API_URL}/applications/submit`);
+
+    const res = await axios.post(
+      `${import.meta.env.VITE_API_URL}/applications/submit`,
+      form,
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
     );
 
+    console.log("✅ Response:", res.data);
+
     toast.success("Application Submitted Successfully!");
+    alert("Application Submitted Successfully!"); // fallback
 
     const newForm = JSON.parse(JSON.stringify(EMPTY_FORM));
     setForm(newForm);
     setDeclarationChecked(false);
 
-} catch (e) {
-    toast.error(e.response?.data?.message || "Failed to submit application.");
-} finally {
+  } catch (e) {
+    console.error("💥 ERROR:", e);
+
+    let msg = "Submission failed";
+
+    if (e.response) {
+      msg = e.response.data?.message || "Server error";
+    } else if (e.request) {
+      msg = "No response from server";
+    } else {
+      msg = e.message;
+    }
+
+    toast.error(msg);
+    alert(msg); // fallback
+
+  } finally {
     setSubmitting(false);
-}
+  }
 };
 if (loading) return <FullPageLoader label="Loading admission form..." />;
 if (admissionsClosed) {

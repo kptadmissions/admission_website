@@ -111,7 +111,7 @@ if (categoryDetails.hasCertificate === "Yes") {
       end2.setHours(0, 0, 0, 0);
 
       if (d >= start1 && d <= end1) {
-        return { examDate: "07-05-2026", examTime: "10:00 AM" };
+        return { examDate: "06-05-2026", examTime: "10:00 AM" };
       }
 
       if (d >= start2 && d <= end2) {
