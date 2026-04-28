@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 
 const applicationSchema = new mongoose.Schema({
-
   // 🔹 OFFICER WHO CREATED THIS APPLICATION
   createdBy: {
     clerkId: { type: String, required: true }, // Clerk user ID
@@ -106,6 +105,15 @@ const applicationSchema = new mongoose.Schema({
   // 7. CATEGORY DETAILS
   // ================================
   categoryDetails: {
+    hasCertificate: {
+      type: String,
+      enum: ["Yes", "No"]
+    },
+    hasAcknowledgement: {
+      type: String,
+      enum: ["Yes", "No"]
+    },
+    acknowledgementNumber: String,
     category: String,
     casteName: String,
     annualIncome: Number
@@ -152,14 +160,14 @@ const applicationSchema = new mongoose.Schema({
     parentSignatureText: String
   },
   
-examDetails: {
-  examDate: String,
-  examTime: String,
-  examCenter: {
-    type: String,
-    default: "KARNATAKA (GOVT.) POLYTECHNIC, MANGALORE"
-  }
-},
+  examDetails: {
+    examDate: String,
+    examTime: String,
+    examCenter: {
+      type: String,
+      default: "KARNATAKA (GOVT.) POLYTECHNIC, MANGALORE"
+    }
+  },
   // 🔹 ACKNOWLEDGEMENT META
   submittedAt: {
     type: Date,

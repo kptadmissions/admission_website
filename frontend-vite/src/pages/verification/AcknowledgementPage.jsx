@@ -22,6 +22,7 @@ export default function AcknowledgementPage() {
 
   const downloadPDF = async () => {
     const element = document.querySelector("#printable-document");
+    if (!element) return;
 
     const studentName = data?.basicDetails?.name || "Student";
     const sslcNo = data?.educationalParticulars?.sslcRegisterNumber || "SSLC";
@@ -30,23 +31,23 @@ export default function AcknowledgementPage() {
     await waitForImages();
 
     const opt = {
-      margin: [0, 0, 0, 0],
+      margin: 0,
       filename: filename,
       image: { type: "jpeg", quality: 1 },
       html2canvas: {
-        scale: 3,
+        scale: 5, // High quality scale
         useCORS: true,
+        letterRendering: true,
       },
       jsPDF: {
         unit: "mm",
         format: "a4",
         orientation: "portrait",
       },
-      pagebreak: {
-        mode: ['avoid-all', 'css', 'legacy']
-      }
+      pagebreak: { mode: ["css", "legacy"] },
     };
 
+    // Correctly execute the PDF generation
     html2pdf().set(opt).from(element).save();
   };
 
@@ -83,6 +84,15 @@ export default function AcknowledgementPage() {
     return val !== undefined && val !== null ? `${Number(val).toFixed(3)}` : "0.000";
   };
 
+  const formatDOB = (dobString) => {
+    if (!dobString) return "";
+    const date = new Date(dobString);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
   return (
     <div className="bg-gray-200 min-h-screen py-8">
       <style>
@@ -90,30 +100,33 @@ export default function AcknowledgementPage() {
           @media print {
             body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .print-hidden { display: none !important; }
-            .a4-container { margin: 0 !important; border: none !important; box-shadow: none !important; width: 210mm !important; height: 297mm !important; overflow: hidden; }
           }
         
           .a4-container {
             width: 210mm;
             min-height: 297mm;
+            padding: 10mm;
             margin: 0 auto;
             background: white;
-            box-sizing: border-box;
-            font-family: Arial, sans-serif;
-            padding: 10mm 15mm;
-            color: black;
             position: relative;
-            overflow: visible;
+            box-sizing: border-box;
+            page-break-after: always;
           }
-          .ht-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          .ht-table th, .ht-table td { border: 1px solid black; padding: 10px; text-align: left; font-size: 12px; }
-          .ht-table th { background-color: #f2f2f2; width: 35%; }
-       
+
+          .a4-container:last-child {
+            page-break-after: auto;
+          }
+
           .header-wrapper { display: flex; flex-direction: column; align-items: center; margin-bottom: 10px; }
           .govt-logo { width: 50px; height: 50px; object-fit: contain; margin-bottom: 5px; }
           .header-main-flex { display: flex; align-items: center; justify-content: space-between; width: 100%; }
           .college-logo { width: 85px; height: 85px; object-fit: contain; }
           .header-center-text { text-align: center; flex: 1; }
+          
+          * {
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+          }
 
           .field-row { display: flex; gap: 12px; margin-bottom: 6px; width: 100%; align-items: baseline; }
           .field-item { display: flex; white-space: nowrap; align-items: baseline; flex-shrink: 0; }
@@ -124,9 +137,14 @@ export default function AcknowledgementPage() {
           .border-black { border: 1px solid black; }
           .text-center { text-align: center; }
           .font-bold { font-weight: bold; }
+
+          .ht-official-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
+          .ht-official-table th, .ht-official-table td { border: 1px solid black; padding: 8px; text-align: left; }
+          .ht-yellow-header { background-color: #fef08a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         `}
       </style>
 
+      {/* Search Bar Area */}
       <div className="max-w-2xl mx-auto mb-6 p-4 bg-white rounded shadow-md print-hidden flex gap-3">
         <input
           type="text"
@@ -148,32 +166,33 @@ export default function AcknowledgementPage() {
         )}
       </div>
 
-      {error && <p className="text-red-500 text-center font-bold print-hidden">{error}</p>}
+      {error && <p className="text-red-500 text-center font-bold print-hidden mb-4">{error}</p>}
 
       {data && (
         <div id="printable-document">
+          {/* ================= PAGE 1: ACKNOWLEDGEMENT ================= */}
           <div className="a4-container">
             <div className="header-wrapper">
               <img src="/Seal_of_Karnataka.png" alt="Govt Logo" className="govt-logo" />
               <div className="header-main-flex">
                 <img src="https://www.kptplacements.org/logo.jpg" alt="College Logo" className="college-logo" />
                 <div className="header-center-text">
-                  <p style={{ fontSize: '12px' }}>GOVERNMENT OF KARNATAKA</p>
-                  <p style={{ fontSize: '13px' }} className="font-bold">DEPARTMENT OF TECHNICAL EDUCATION</p>
-                  <p style={{ fontSize: '15px' }} className="font-bold mt-1">KARNATAKA (GOVT.) POLYTECHNIC, MANGALORE</p>
-                  <p style={{ fontSize: '10px' }} className="font-normal italic">(An Autonomous Institution Under AICTE, New Delhi)</p>
+                  <p style={{ fontSize: "12px" }}>GOVERNMENT OF KARNATAKA</p>
+                  <p style={{ fontSize: "13px" }} className="font-bold">DEPARTMENT OF TECHNICAL EDUCATION</p>
+                  <p style={{ fontSize: "15px" }} className="font-bold mt-1">KARNATAKA (GOVT.) POLYTECHNIC, MANGALORE</p>
+                  <p style={{ fontSize: "10px" }} className="font-normal italic">(An Autonomous Institution Under AICTE, New Delhi)</p>
                 </div>
                 <img src="https://www.kptplacements.org/logo2.png" alt="75 Years Logo" className="college-logo" />
               </div>
             </div>
 
-            <div className="text-center mb-4 py-1" style={{ borderTop: '1.5px solid black', borderBottom: '1.5px solid black' }}>
-              <p style={{ fontSize: '10px' }} className="font-bold uppercase">
+            <div className="text-center mb-4 py-1" style={{ borderTop: "1.5px solid black", borderBottom: "1.5px solid black" }}>
+              <p style={{ fontSize: "10px" }} className="font-bold uppercase">
                 APPLICATION FORM FOR ONLINE ADMISSION TO FIRST YEAR DIPLOMA COURSES FOR THE YEAR 2026-27
               </p>
             </div>
 
-            <div style={{ display: 'flex', gap: '20px', marginBottom: '8px' }}>
+            <div style={{ display: "flex", gap: "20px", marginBottom: "8px" }}>
               <div className="flex-1">
                 <div className="field-row">
                   <div className="field-item flex-1">
@@ -188,9 +207,7 @@ export default function AcknowledgementPage() {
                 <div className="field-row">
                   <div className="field-item flex-1">
                     <span className="field-label">3. Aadhaar Number:</span>
-                    <span className="field-value">
-                      {data.basicDetails?.aadharNumber || "-"}
-                    </span>
+                    <span className="field-value">{data.basicDetails?.aadharNumber || "-"}</span>
                   </div>
                 </div>
 
@@ -204,9 +221,7 @@ export default function AcknowledgementPage() {
                 <div className="field-row">
                   <div className="field-item flex-1">
                     <span className="field-label">5. Date of Birth:</span>
-                    <span className="field-value">
-                      {data.basicDetails?.dob ? new Date(data.basicDetails.dob).toISOString().split('T')[0] : ""}
-                    </span>
+                    <span className="field-value">{formatDOB(data.basicDetails?.dob)}</span>
                   </div>
                 </div>
 
@@ -228,28 +243,28 @@ export default function AcknowledgementPage() {
                   </div>
                 </div>
 
-                <div style={{ margin: '8px 0' }}>
+                <div style={{ margin: "8px 0" }}>
                   <span className="field-label font-bold">9. Contact Details</span>
-                  <div className="field-row" style={{ marginTop: '4px' }}>
+                  <div className="field-row" style={{ marginTop: "4px" }}>
                     <div className="field-item">
                       <span className="field-label">a) Mobile:</span>
                       <span className="field-value">{data.contactDetails?.mobile}</span>
                     </div>
                     <div className="field-item">
                       <span className="field-label">b) E-mail:</span>
-                      <span className="field-value" style={{ textTransform: 'none' }}>{data.contactDetails?.email}</span>
+                      <span className="field-value" style={{ textTransform: "none" }}>{data.contactDetails?.email}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div style={{ width: '135px', flexShrink: 0 }}>
+              <div style={{ width: "135px", flexShrink: 0 }}>
                 <div className="border-black mb-2 p-2 text-center">
-                  <p style={{ fontSize: '9px' }} className="font-bold uppercase">Application No.</p>
-                  <p style={{ fontSize: '14px' }} className="font-extrabold ">{data.applicationNumber}</p>
+                  <p style={{ fontSize: "9px" }} className="font-bold uppercase">Application No.</p>
+                  <p style={{ fontSize: "14px" }} className="font-extrabold">{data.applicationNumber}</p>
                 </div>
-                <div className="border-black" style={{ height: '145px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fcfcfc' }}>
-                  <p style={{ fontSize: '9px' }} className="font-bold text-center px-2">RECENT PASSPORT SIZE COLOR PHOTO</p>
+                <div className="border-black" style={{ height: "145px", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#fcfcfc" }}>
+                  <p style={{ fontSize: "9px" }} className="font-bold text-center px-2">RECENT PASSPORT SIZE COLOR PHOTO</p>
                 </div>
               </div>
             </div>
@@ -295,7 +310,7 @@ export default function AcknowledgementPage() {
               </div>
             </div>
 
-            <div className="field-row" style={{ marginTop: '5px' }}>
+            <div className="field-row" style={{ marginTop: "5px" }}>
               <div className="field-item flex-1">
                 <span className="field-label">18. Yrs Studied in KA:</span>
                 <span className="field-value">{data.studyEligibility?.yearsStudiedInKarnataka}</span>
@@ -352,12 +367,6 @@ export default function AcknowledgementPage() {
                 <span className="field-label">28. 5yr Exemption Rule:</span>
                 <span className="field-value">{(data.exemptionClaims?.isFiveYearExemption || "").toUpperCase()}</span>
               </div>
-              {(data.exemptionClaims?.isFiveYearExemption || "").toUpperCase() === "YES" && (
-                <div className="field-item flex-1">
-                  <span className="field-label">Clause:</span>
-                  <span className="field-value">{data.exemptionClaims?.exemptionClause || "-"}</span>
-                </div>
-              )}
               <div className="field-item flex-1">
                 <span className="field-label">29. Rural (1-10th):</span>
                 <span className="field-value">{data.studyEligibility?.isRural?.toUpperCase()}</span>
@@ -389,30 +398,6 @@ export default function AcknowledgementPage() {
                 <span className="field-value">{data.categoryDetails?.annualIncome}</span>
               </div>
             </div>
-            {(data.shiftDetails?.shiftType || "").toUpperCase().includes("EVENING") && (
-              <div className="field-row">
-                <div className="field-item flex-1">
-                  <span className="field-label">35. Shift:</span>
-                  <span className="field-value">EVENING</span>
-                </div>
-
-                <div className="field-item flex-1">
-                  <span className="field-label">36. Experience:</span>
-                  <span className="field-value">
-                    {data.shiftDetails?.experienceYears || 0}Y {data.shiftDetails?.experienceMonths || 0}M
-                  </span>
-                </div>
-
-                <div className="field-item flex-1">
-                  <span className="field-label">37. Service Certificate:</span>
-                  <span className="field-value">
-                    {(data.shiftDetails?.serviceCertificate || "").toUpperCase() === "YES"
-                      ? "PROVIDED"
-                      : "NOT PROVIDED"}
-                  </span>
-                </div>
-              </div>
-            )}
 
             <div className="field-row">
               <div className="field-item flex-1">
@@ -427,134 +412,142 @@ export default function AcknowledgementPage() {
 
             <div className="border-black p-2 mt-3">
               <p className="field-label font-bold mb-1">40. Residential Address</p>
-              <p className="field-value" style={{ marginLeft: 0, lineHeight: '1.4' }}>{data.contactDetails?.address}</p>
+              <p className="field-value" style={{ marginLeft: 0, lineHeight: "1.4" }}>{data.contactDetails?.address}</p>
               <div className="field-item mt-2">
                 <span className="field-label">Pincode:</span>
                 <span className="field-value">{data.contactDetails?.pincode}</span>
               </div>
             </div>
 
-            <div style={{ marginTop: '10px', marginBottom: '6px' }}>
-              <p style={{ fontSize: '10px', lineHeight: '1.4' }} className="font-black text-center uppercase">
-                I AGREE TO PRODUCE ORIGINAL CASTE/INCOME CERTIFICATE AT THE TIME OF 1ST ROUND COUNSELLING OTHERWISE SEAT WILL BE ALLOTTED ONLY UNDER GENERAL MERIT QUOTA.
+            <div className="text-center pt-2 mt-4" style={{ borderTop: "1px solid black" }}>
+              <p className="font-bold uppercase" style={{ fontSize: "13px" }}>Declaration</p>
+              <p style={{ fontSize: "10px", marginTop: "6px", lineHeight: "1.5" }}>
+                I/We declare that the above information is true and correct to the best of our knowledge. I agree to produce all original certificates during verification.
               </p>
             </div>
 
-            <div className="text-center pt-2" style={{ borderTop: '1px solid black' }}>
-              <p className="font-bold uppercase" style={{ fontSize: '13px' }}>Declaration</p>
-              <p style={{ fontSize: '10px', marginTop: '6px', lineHeight: '1.5' }}>
-                I/We declare that the above information is true and correct to the best of our knowledge. If annual income is not provided, it will be assumed to be more than 8 lakhs. I agree to produce all original certificates during verification.
-              </p>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '45px', padding: '0 10px' }}>
-              <div className="text-center" style={{ width: '180px' }}>
-                <div style={{ borderTop: '1px solid black', paddingTop: '5px' }}>
-                  <p className="font-bold uppercase" style={{ fontSize: '10px' }}>Signature of Dean / Nodal Officer</p>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "45px", padding: "0 10px" }}>
+              <div className="text-center" style={{ width: "180px" }}>
+                <div style={{ borderTop: "1px solid black", paddingTop: "5px" }}>
+                  <p className="font-bold uppercase" style={{ fontSize: "10px" }}>Dean / Nodal Officer</p>
                 </div>
               </div>
-              <div className="text-center" style={{ width: '180px' }}>
-                <div style={{ borderTop: '1px solid black', paddingTop: '5px' }}>
-                  <p className="font-bold uppercase" style={{ fontSize: '10px' }}>Parent/Guardian Signature</p>
+              <div className="text-center" style={{ width: "180px" }}>
+                <div style={{ borderTop: "1px solid black", paddingTop: "5px" }}>
+                  <p className="font-bold uppercase" style={{ fontSize: "10px" }}>Parent/Guardian Signature</p>
                 </div>
               </div>
-              <div className="text-center" style={{ width: '180px' }}>
-                <div style={{ borderTop: '1px solid black', paddingTop: '5px' }}>
-                  <p className="font-bold uppercase" style={{ fontSize: '10px' }}>Candidate Signature</p>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ position: 'absolute', bottom: '10mm', left: '15mm', right: '15mm' }}>
-              <div style={{ borderTop: '1.5px solid black', paddingTop: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'center', fontSize: '10px' }}>
-                  <p><span className="font-bold uppercase">Registration Center:</span> KARNATAKA (GOVT) POLYTECHNIC, MANGALORE</p>
-                </div>
-                <div className="mt-2 text-center" style={{ fontSize: '9px' }}>
-                  <p className="font-bold">NOTE: * Special category claims are subject to document verification.</p>
-                  <p className="font-bold uppercase mt-1">No further changes will be entertained after application submission.</p>
+              <div className="text-center" style={{ width: "180px" }}>
+                <div style={{ borderTop: "1px solid black", paddingTop: "5px" }}>
+                  <p className="font-bold uppercase" style={{ fontSize: "10px" }}>Candidate Signature</p>
                 </div>
               </div>
             </div>
           </div>
 
+          {/* ================= PAGE 2: HALL TICKET ================= */}
           <div className="a4-container">
-            <div className="header-wrapper">
-              <img src="/Seal_of_Karnataka.png" alt="Govt Logo" className="govt-logo" />
-              <div className="header-main-flex">
-                <img src="https://www.kptplacements.org/logo.jpg" alt="College Logo" className="college-logo" />
-                <div className="header-center-text">
-                  <p style={{ fontSize: '14px' }} className="font-bold uppercase">HALL TICKET - KPT CAT EXAM 2026</p>
-                  <p style={{ fontSize: '12px' }}>GOVERNMENT OF KARNATAKA</p>
-                  <p style={{ fontSize: '12px' }} className="mt-1">KARNATAKA (GOVT.) POLYTECHNIC, MANGALORE</p>
-                  <p style={{ fontSize: '10px' }} className="font-normal italic">(An Autonomous Institution Under AICTE, New Delhi)</p>
-                </div>
-                <img src="https://www.kptplacements.org/logo2.png" alt="75 Years Logo" className="college-logo" />
-              </div>
+            <div className="text-center mb-6">
+              <p className="font-bold" style={{ fontSize: "18px" }}>KARNATAKA (GOVT.) POLYTECHNIC, MANGALURU</p>
+              <p style={{ fontSize: "14px" }}>(An Autonomous Institution under AICTE, New Delhi)</p>
+              <p className="font-bold mt-2" style={{ fontSize: "16px" }}>KPT COMMON ADMISSION TEST (KPT-CAT) 2026-27</p>
+              <p className="font-bold underline mt-1 uppercase" style={{ fontSize: "16px" }}>HALL TICKET / ADMISSION TICKET</p>
             </div>
 
-            <div style={{ borderTop: '1.5px solid black', marginTop: '10px' }}></div>
-
-            <table className="ht-table">
+            <table className="ht-official-table">
+              <thead>
+                <tr className="ht-yellow-header">
+                  <th className="font-bold w-1/3">Particulars</th>
+                  <th className="font-bold">Details</th>
+                </tr>
+              </thead>
               <tbody>
                 <tr>
-                  <th>Candidate Name</th>
-                  <td className="font-bold">{data.basicDetails?.name}</td>
+                  <td className="font-bold">Exam Name</td>
+                  <td className="font-bold uppercase">KPT Common Admission Test (KPT-CAT) 2026-27</td>
                 </tr>
                 <tr>
-                  <th>SSLC Register Number</th>
-                  <td>{data.educationalParticulars?.sslcRegisterNumber}</td>
+                  <td className="font-bold">Exam Date</td>
+                  <td className="font-bold uppercase">{data.examDetails?.examDate || "30-04-2026"}</td>
                 </tr>
                 <tr>
-                  <th>Father Name</th>
-                  <td>{data.basicDetails?.fatherName}</td>
+                  <td className="font-bold">Reporting Time</td>
+                  <td className="font-bold uppercase">9:00 AM (Sharp)</td>
                 </tr>
                 <tr>
-                  <th>Application Number</th>
-                  <td className="font-bold">{data.applicationNumber}</td>
+                  <td className="font-bold">Exam Time</td>
+                  <td className="font-bold uppercase">10:00 AM to 11:00 AM (60 Minutes)</td>
                 </tr>
                 <tr>
-                  <th>Exam Centre</th>
-                  <td>{data.examDetails?.examCenter || "KPT MANGALORE CAMPUS"}</td>
-                </tr>
-                <tr>
-                  <th>Exam Date</th>
-                  <td className="font-bold">{data.examDetails?.examDate || "TBA"}</td>
-                </tr>
-                <tr>
-                  <th>Exam Time</th>
-                  <td className="font-bold">{data.examDetails?.examTime || "TBA"}</td>
+                  <td className="font-bold">Exam Centre</td>
+                  <td className="font-bold uppercase">Karnataka (Govt.) Polytechnic, Kadri Hills, Mangaluru - 575004</td>
                 </tr>
               </tbody>
             </table>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '80px', padding: '0 20px' }}>
-              <div className="text-center" style={{ width: '200px' }}>
-                <div style={{ borderTop: '1px solid black', paddingTop: '5px' }}>
-                  <p className="font-bold uppercase" style={{ fontSize: '10px' }}>Student Signature</p>
-                </div>
-              </div>
-              <div className="text-center" style={{ width: '200px' }}>
-                <div style={{ borderTop: '1px solid black', paddingTop: '5px' }}>
-                  <p className="font-bold uppercase" style={{ fontSize: '10px' }}>Dean(Acadamic) / Nodal Officer</p>
-                </div>
-              </div>
-            </div>
+            <p className="font-bold underline text-center mb-2" style={{ fontSize: "14px" }}>Candidate Details</p>
+            
+            <table className="ht-official-table">
+              <thead>
+                <tr className="ht-yellow-header">
+                  <th className="font-bold w-1/3">Particulars</th>
+                  <th className="font-bold">Details</th>
+                  <th className="font-bold text-center" style={{ width: "25%" }}>Invigilator's Signature</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="font-bold">Registration Number</td>
+                  <td className="font-bold uppercase">{data.applicationNumber}</td>
+                  <td className="align-bottom text-center pb-2" rowSpan="6">
+                    Signature:
+                  </td>
+                </tr>
+                <tr>
+                  <td className="font-bold">Candidate's Name</td>
+                  <td className="font-bold uppercase">{data.basicDetails?.name}</td>
+                </tr>
+                <tr>
+                  <td className="font-bold">Father's Name</td>
+                  <td className="font-bold uppercase">{data.basicDetails?.fatherName}</td>
+                </tr>
+                <tr>
+                  <td className="font-bold">Mother's Name</td>
+                  <td className="font-bold uppercase">{data.basicDetails?.motherName}</td>
+                </tr>
+                <tr>
+                  <td className="font-bold">Date of Birth</td>
+                  <td className="font-bold uppercase">{formatDOB(data.basicDetails?.dob)}</td>
+                </tr>
+                <tr>
+                  <td className="font-bold">Gender</td>
+                  <td className="font-bold uppercase">{data.basicDetails?.gender}</td>
+                </tr>
+              </tbody>
+            </table>
 
-            <div style={{ marginTop: '50px', padding: '15px', border: '1px dashed black' }}>
-              <p className="font-bold underline mb-2" style={{ fontSize: '12px' }}>Instructions to Candidates:</p>
-              <ul style={{ fontSize: '11px', lineHeight: '1.8' }}>
-                <li>1. Candidate must carry this Hall Ticket to the exam hall without fail.</li>
-                <li>2. Report to the exam centre at least 30 minutes before the scheduled time.</li>
-                <li>3. Bring a valid Government ID proof (Aadhaar Card/Passport) for verification.</li>
-                <li>4. Mobile phones, calculators, or any electronic gadgets are strictly prohibited.</li>
-                <li>5. Candidates must follow all instructions provided by the invigilator.</li>
-                <li>6. Candidates Must carry exam pad.</li>
-              </ul>
+            <div className="mt-6">
+              <p className="font-bold underline mb-3" style={{ fontSize: "13px" }}>Instructions to Candidates:</p>
+              <ol className="list-decimal pl-5 space-y-2 text-justify" style={{ fontSize: "12px", lineHeight: "1.4" }}>
+                <li><strong>Mandatory Attendance:</strong> Candidates must compulsorily write the KPT-CAT.</li>
+                <li><strong>Hall Ticket Mandatory:</strong> Entry to the exam centre will not be permitted without this ticket.</li>
+                <li><strong>Writing Materials:</strong> Bring a writing pad and black/blue ballpoint pen.</li>
+                <li><strong>Schedule:</strong> Reporting time is 9:00 AM sharp. Latecomers will not be permitted.</li>
+                <li><strong>Identity Proof:</strong> Bring original Aadhaar Card or any valid Photo ID.</li>
+              </ol>
             </div>
             
-            <div style={{ position: 'absolute', bottom: '15mm', width: '85%', textAlign: 'center', fontSize: '10px', color: '#666' }}>
-              <p>This is a computer-generated Hall Ticket. No physical signature is required unless specified.</p>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "60px", padding: "0 20px" }}>
+              <div className="text-center" style={{ width: "220px" }}>
+                <div style={{ borderTop: "1px solid black", paddingTop: "5px" }}>
+                  <p className="font-bold" style={{ fontSize: "12px" }}>Candidate's Signature</p>
+                </div>
+              </div>
+              <div className="text-center" style={{ width: "220px" }}>
+                <div style={{ borderTop: "1px solid black", paddingTop: "5px" }}>
+                  <p className="font-bold" style={{ fontSize: "12px" }}>Dean / Nodal Officer Signature</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
