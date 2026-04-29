@@ -12,7 +12,7 @@ import { requireEditAccess } from "../middlewares/access.js"; // ✅ ADD THIS
 const router = express.Router();
 
 // 🔐 Officer submits form
-router.post("/submit", requireAuth(), requireEditAccess, submitApplication);
+router.post("/submit", requireAuth(),  submitApplication);
 
 // 🔍 ADVANCED SEARCH (PROTECTED)
 router.get("/search-all", requireAuth(), requireEditAccess, searchApplications);
