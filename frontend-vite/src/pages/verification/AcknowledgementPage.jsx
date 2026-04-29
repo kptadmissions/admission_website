@@ -94,10 +94,10 @@ export default function AcknowledgementPage() {
   };
 
   // Condition for declaration line visibility
-  const shouldShowDeclaration = data ? !(
-    data.categoryDetails?.category === "GM" && 
-    data.categoryDetails?.hasCertificate === "Yes"
-  ) : true;
+  const shouldShowDeclaration =
+    !data?.categoryDetails?.hasCertificate ||
+    data.categoryDetails.hasCertificate.trim().toUpperCase() === "NO" ||
+    !!data.categoryDetails?.acknowledgementNumber;
 
   return (
     <div className="bg-gray-200 min-h-screen py-8">
