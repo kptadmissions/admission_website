@@ -472,7 +472,7 @@ return (
             <SelectGroup id="qualifyingExam" name="qualifyingExam" label="10. Qualifying Examination" value={form.qualifyingDetails.qualifyingExam ?? ""} onChange={(e) => update("qualifyingDetails", "qualifyingExam", e.target.value)} options={["SSLC", "CBSE", "ICSE", "OTHERS"]} required disabled={!editable} />
             <SelectGroup id="nativeState" name="nativeState" label="11. Code of the Native State" value={form.qualifyingDetails.nativeState ?? ""} onChange={(e) => { update("qualifyingDetails", "nativeState", e.target.value); update("qualifyingDetails", "nativeDistrict", ""); }} options={STATES} required disabled={!editable} />
             {form.qualifyingDetails.nativeState === "Karnataka" ? (
-                <SelectGroup id="nativeDistrict" name="nativeDistrict" label="12. If Karnataka, Code of Native District" value={form.qualifyingDetails.nativeDistrict ?? ""} onChange={(e) => update("qualifyingDetails", "nativeDistrict", e.target.value)} options={KARNATAKA_DISTRICTS} required disabled={!editable} />
+                <SelectGroup id="nativeDistrict" name="nativeDistrict" label="12. Native District" value={form.qualifyingDetails.nativeDistrict ?? ""} onChange={(e) => update("qualifyingDetails", "nativeDistrict", e.target.value)} options={KARNATAKA_DISTRICTS} required disabled={!editable} />
             ) : (
                 <InputGroup id="nativeDistrict" name="nativeDistrict" label="12. Code of Native District" value={form.qualifyingDetails.nativeDistrict ?? ""} onChange={(e) => update("qualifyingDetails", "nativeDistrict", e.target.value)} required disabled={!editable} />
             )}
