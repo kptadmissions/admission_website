@@ -43,8 +43,8 @@ export default function AcknowledgementPage() {
         orientation: "portrait",
       },
       pagebreak: {
-  mode: ['avoid-all', 'css', 'legacy']
-}
+        mode: ['avoid-all', 'css', 'legacy']
+      }
     };
 
     html2pdf().set(opt).from(element).save();
@@ -92,6 +92,12 @@ export default function AcknowledgementPage() {
     const year = date.getFullYear();
     return `${day}-${month}-${year}`;
   };
+
+  // Condition for declaration line visibility
+  const shouldShowDeclaration = data ? !(
+    data.categoryDetails?.category === "GM" && 
+    data.categoryDetails?.hasCertificate === "Yes"
+  ) : true;
 
   return (
     <div className="bg-gray-200 min-h-screen py-8">
@@ -284,7 +290,7 @@ export default function AcknowledgementPage() {
 
               <div style={{ width: '135px', flexShrink: 0 }}>
                 <div className="border-black mb-2 p-2 text-center">
-                  <p style={{ fontSize: '9px' }} className="font-bold uppercase">Application No.</p>
+                  <p style={{ fontSize: '9px' }} className="font-bold uppercase">Registration NO.</p>
                   <p style={{ fontSize: '14px' }} className="font-extrabold ">{data.applicationNumber}</p>
                 </div>
                 <div className="border-black" style={{ height: '145px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fcfcfc' }}>
@@ -473,11 +479,13 @@ export default function AcknowledgementPage() {
               </div>
             </div>
 
-            <div style={{ marginTop: '10px', marginBottom: '6px' }}>
-              <p style={{ fontSize: '10px', lineHeight: '1.4' }} className="font-black text-center uppercase">
-                I AGREE TO PRODUCE ORIGINAL CASTE/INCOME CERTIFICATE AT THE TIME OF 1ST ROUND COUNSELLING OTHERWISE SEAT WILL BE ALLOTTED ONLY UNDER GENERAL MERIT QUOTA.
-              </p>
-            </div>
+            {shouldShowDeclaration && (
+              <div style={{ marginTop: '10px', marginBottom: '6px' }}>
+                <p style={{ fontSize: '10px', lineHeight: '1.4' }} className="font-black text-center uppercase">
+                  I AGREE TO PRODUCE ORIGINAL CASTE/INCOME CERTIFICATE AT THE TIME OF 1ST ROUND COUNSELLING OTHERWISE SEAT WILL BE ALLOTTED ONLY UNDER GENERAL MERIT QUOTA.
+                </p>
+              </div>
+            )}
 
             <div className="text-center pt-2" style={{ borderTop: '1px solid black' }}>
               <p className="font-bold uppercase" style={{ fontSize: '13px' }}>Declaration</p>
@@ -681,7 +689,7 @@ export default function AcknowledgementPage() {
                   <td className="font-bold">Registration Number</td>
                   <td className="font-bold uppercase">{data.applicationNumber}</td>
                   <td className="align-bottom text-center pb-2" rowSpan="7">
-                     Signature:
+                      Signature:
                   </td>
                 </tr>
                 <tr>
@@ -719,9 +727,9 @@ export default function AcknowledgementPage() {
              <ol className="list-decimal pl-5 text-justify" style={{ fontSize: '12px', lineHeight: '1.3' }}>
                 <li><strong>Mandatory Attendance:</strong> Candidates who have submitted the application must compulsorily write the KPT Common Admission Test (KPT-CAT). Admission eligibility will not be granted without appearing for the exam.</li>
                 <li><strong>Hall Ticket Mandatory:</strong> On the day of the KPT Common Admission Test, candidates must compulsorily produce this Hall Ticket / Admission Ticket. Entry to the exam centre will not be permitted without it.</li>
-                <li><strong>Writing Materials:</strong> Candidates must compulsorily bring a writing pad. Bring a black/blue ballpoint pen to mark the answers.</li>
+                <li><strong>Writing Materials:</strong> Candidates must compulsorily bring a writing pad. Bring a black ballpoint pen to mark the answers.</li>
                 <li><strong>Schedule:</strong> Reporting time is 9:00 AM sharp. Candidates must report at the exam centre on time. Latecomers will not be permitted.</li>
-                <li><strong>Identity Proof:</strong> Must compulsorily bring the original copy of Aadhaar Card / PAN Card / Voter ID / Driving Licence / SSLC Hall Ticket / PUC Hall Ticket / or any photo ID card.</li>
+                <li><strong>Identity Proof:</strong> Must compulsorily bring the original  Aadhaar Card / PAN Card / Voter ID / Driving Licence / SSLC Hall Ticket / PUC Hall Ticket / or any photo ID card.</li>
                 <li><strong>Prohibited Items:</strong> Mobile phones, smart watches, calculators, electronic gadgets, and study materials are strictly prohibited inside the exam hall.</li>
               </ol>
             </div>
