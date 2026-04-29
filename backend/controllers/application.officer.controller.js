@@ -1,5 +1,3 @@
-// controllers/application.officer.controller.js
-
 import Application from "../models/Application.js";
 import { generateApplicationNumber } from "../utils/generateApplicationNumber.js";
 
@@ -8,7 +6,7 @@ export const submitApplication = async (req, res) => {
   try {
     const formData = req.body;
 
-    // 🔹 SAFE EXTRACTION (VERY IMPORTANT ORDER)
+    // 🔹 SAFE EXTRACTION
     const categoryDetails = formData.categoryDetails || {};
     const edu = formData.educationalParticulars || {};
     const shift = formData.shiftDetails || {};
@@ -18,7 +16,7 @@ export const submitApplication = async (req, res) => {
     const category = categoryDetails.category;
     const sslc = edu.sslcRegisterNumber;
 
-    // 🔹 REQUIRED VALIDATION
+    // 🔹 VALIDATION
     if (!sslc) {
       return res.status(400).json({ message: "SSLC Register Number is required" });
     }
@@ -27,7 +25,7 @@ export const submitApplication = async (req, res) => {
       return res.status(400).json({ message: "Mother and Father name are required" });
     }
 
-    // 🔹 DUPLICATE CHECK
+    // 🔹 DUPLICATE SSLC CHECK
     const existing = await Application.findOne({
       "educationalParticulars.sslcRegisterNumber": sslc
     });
@@ -39,33 +37,31 @@ export const submitApplication = async (req, res) => {
     }
 
     // 🔹 CATEGORY DEFAULT
-   // 🔹 CATEGORY DEFAULT
-if (!categoryDetails.hasCertificate) {
-  categoryDetails.hasCertificate = "No";
-}
+    if (!categoryDetails.hasCertificate) {
+      categoryDetails.hasCertificate = "No";
+    }
 
-// 🔹 HANDLE CATEGORY LOGIC
-if (categoryDetails.hasCertificate === "Yes") {
-  delete categoryDetails.hasAcknowledgement;
-  delete categoryDetails.acknowledgementNumber;
-} else {
-  // hasCertificate === "No"
-  if (!categoryDetails.hasAcknowledgement) {
-    return res.status(400).json({
-      message: "Please specify acknowledgement status"
-    });
-  }
+    if (categoryDetails.hasCertificate === "Yes") {
+      delete categoryDetails.hasAcknowledgement;
+      delete categoryDetails.acknowledgementNumber;
+    } else {
+      if (!categoryDetails.hasAcknowledgement) {
+        return res.status(400).json({
+          message: "Please specify acknowledgement status"
+        });
+      }
 
-  if (
-    categoryDetails.hasAcknowledgement === "Yes" &&
-    !categoryDetails.acknowledgementNumber
-  ) {
-    return res.status(400).json({
-      message: "Acknowledgement number is required"
-    });
-  }
-}
-    // 🔹 CONVERT NUMBERS (VERY IMPORTANT)
+      if (
+        categoryDetails.hasAcknowledgement === "Yes" &&
+        !categoryDetails.acknowledgementNumber
+      ) {
+        return res.status(400).json({
+          message: "Acknowledgement number is required"
+        });
+      }
+    }
+
+    // 🔹 NUMBER CONVERSIONS
     edu.sslcMaxMarks = Number(edu.sslcMaxMarks);
     edu.sslcObtainedMarks = Number(edu.sslcObtainedMarks);
     edu.maxScienceMarks = Number(edu.maxScienceMarks);
@@ -78,7 +74,6 @@ if (categoryDetails.hasCertificate === "Yes") {
     categoryDetails.annualIncome = Number(categoryDetails.annualIncome);
 
     study.yearsStudiedInKarnataka = Number(study.yearsStudiedInKarnataka) || 0;
-
     shift.experienceYears = Number(shift.experienceYears) || 0;
     shift.experienceMonths = Number(shift.experienceMonths) || 0;
 
@@ -90,9 +85,6 @@ if (categoryDetails.hasCertificate === "Yes") {
         formData.basicDetails.dob = new Date(`${yyyy}-${mm}-${dd}`);
       }
     }
-
-    // 🔹 GENERATE APPLICATION NUMBER
-    const applicationNumber = await generateApplicationNumber(shiftType, category);
 
     // 🔹 EXAM LOGIC
     const getExamDetails = (date) => {
@@ -123,27 +115,49 @@ if (categoryDetails.hasCertificate === "Yes") {
 
     const examDetails = getExamDetails(new Date());
 
-    // 🔹 CREATE APPLICATION
-    const application = new Application({
-      ...formData,
+    // 🔥 FIX: SAFE SAVE WITH RETRY
+    let saved = false;
+    let application;
+    let attempts = 0;
+    let applicationNumber;
 
-      categoryDetails,
-      educationalParticulars: edu,
-      shiftDetails: shift,
-      studyEligibility: study,
+    while (!saved && attempts < 5) {
+      try {
+        applicationNumber = await generateApplicationNumber(shiftType, category);
 
-      applicationNumber,
-      examDetails,
+        application = new Application({
+          ...formData,
+          categoryDetails,
+          educationalParticulars: edu,
+          shiftDetails: shift,
+          studyEligibility: study,
+          applicationNumber,
+          examDetails,
+          createdBy: {
+            clerkId: req.auth?.userId,
+            name: req.auth?.sessionClaims?.name || "Officer"
+          },
+          status: "SUBMITTED"
+        });
 
-      createdBy: {
-        clerkId: req.auth?.userId,
-        name: req.auth?.sessionClaims?.name || "Officer"
-      },
+        await application.save();
+        saved = true;
 
-      status: "SUBMITTED"
-    });
+      } catch (err) {
+        if (err.code === 11000) {
+          console.warn("Duplicate application number, retrying...");
+          attempts++;
+        } else {
+          throw err;
+        }
+      }
+    }
 
-    await application.save();
+    if (!saved) {
+      return res.status(500).json({
+        message: "Failed to generate unique application number. Try again."
+      });
+    }
 
     return res.status(201).json({
       message: "Application submitted successfully",
@@ -153,8 +167,6 @@ if (categoryDetails.hasCertificate === "Yes") {
 
   } catch (error) {
     console.error("FULL ERROR:", error);
-    console.error("BODY:", req.body);
-
     return res.status(500).json({
       message: error.message
     });
