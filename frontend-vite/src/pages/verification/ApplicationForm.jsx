@@ -542,7 +542,7 @@ return (
             )}
 
             {form.categoryDetails.hasAcknowledgement === "Yes" && form.categoryDetails.hasCertificate === "No" && (
-                <InputGroup id="acknowledgementNumber" name="acknowledgementNumber" label="24. Enter Acknowledgement Number" value={form.categoryDetails.acknowledgementNumber ?? ""} onChange={(e) => update("categoryDetails", "acknowledgementNumber", e.target.value)} disabled={!editable} className="md:col-span-3" />
+                <InputGroup id="acknowledgementNumber" name="acknowledgementNumber" label="24. Enter Acknowledgement Number" value={form.categoryDetails.acknowledgementNumber ?? ""} onChange={(e) => update("categoryDetails", "acknowledgementNumber", e.target.value)}  required={false} disabled={!editable} className="md:col-span-3" />
             )}
 
             <SelectGroup id="category" name="category" label="25. Reserved Category" value={form.categoryDetails.category ?? ""} onChange={(e) => update("categoryDetails", "category", e.target.value)} options={CATEGORIES} disabled={!editable} />

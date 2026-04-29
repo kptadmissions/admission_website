@@ -21,7 +21,7 @@ export default function AcknowledgementPage() {
   };
 
   const downloadPDF = async () => {
-    const element = document.querySelector("#printable-document");
+    const element = document.querySelector("#pdf-content");
 
     const studentName = data?.basicDetails?.name || "Student";
     const sslcNo = data?.educationalParticulars?.sslcRegisterNumber || "SSLC";
@@ -43,7 +43,7 @@ export default function AcknowledgementPage() {
         orientation: "portrait",
       },
       pagebreak: {
-  mode: ['css']
+  mode: ['avoid-all', 'css', 'legacy']
 }
     };
 
@@ -112,8 +112,20 @@ export default function AcknowledgementPage() {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
-        
-         .a4-container {
+        #pdf-content {
+  display: block;
+}
+
+.a4-container {
+  page-break-after: always;
+  break-after: page;
+}
+
+.a4-container:last-child {
+  page-break-after: avoid;
+  break-after: avoid;
+}
+        .a4-container {
   width: 210mm;
   height: 297mm;
   margin: 0 auto;
@@ -123,12 +135,11 @@ export default function AcknowledgementPage() {
   padding: 10mm 15mm;
   color: black;
   position: relative;
-  overflow: hidden;
 
   /* FIX */
+  overflow: visible;
   page-break-inside: avoid;
-}
-          
+} 
           /* Header & Flex Utilities */
           .header-wrapper { display: flex; flex-direction: column; align-items: center; margin-bottom: 10px; }
           .govt-logo { width: 50px; height: 50px; object-fit: contain; margin-bottom: 5px; }
@@ -179,7 +190,7 @@ export default function AcknowledgementPage() {
       {error && <p className="text-red-500 text-center font-bold print-hidden">{error}</p>}
 
       {data && (
-        <div id="printable-document">
+        <div id="pdf-content">
           {/* ================= PAGE 1: ACKNOWLEDGEMENT ================= */}
           <div className="a4-container">
             <div className="header-wrapper">
@@ -476,25 +487,59 @@ export default function AcknowledgementPage() {
             </div>
 
             {/* Acknowledgment Signature Section Updated */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '45px', padding: '0 10px' }}>
-              <div className="text-center" style={{ width: '180px' }}>
-                <div style={{ borderTop: '1px solid black', paddingTop: '5px' }}>
-                  <p className="font-bold uppercase" style={{ fontSize: '10px' }}>Signature of Dean / Nodal Officer</p>
-                </div>
-              </div>
-              <div className="text-center" style={{ width: '180px' }}>
-                <p className="font-bold uppercase truncate" style={{ fontSize: '10px', marginBottom: '2px', minHeight: '13px' }}>{data.basicDetails?.fatherName || ""}</p>
-                <div style={{ borderTop: '1px solid black', paddingTop: '5px' }}>
-                  <p className="font-bold uppercase" style={{ fontSize: '10px' }}>Parent/Guardian Signature</p>
-                </div>
-              </div>
-              <div className="text-center" style={{ width: '180px' }}>
-                <p className="font-bold uppercase truncate" style={{ fontSize: '10px', marginBottom: '2px', minHeight: '13px' }}>{data.basicDetails?.name || ""}</p>
-                <div style={{ borderTop: '1px solid black', paddingTop: '5px' }}>
-                  <p className="font-bold uppercase" style={{ fontSize: '10px' }}>Candidate Signature</p>
-                </div>
-              </div>
-            </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '45px', padding: '0 10px' }}>
+
+  {/* Dean */}
+  <div className="text-center" style={{ width: '180px' }}>
+    <div style={{ borderTop: '1px solid black', paddingTop: '5px' }}>
+      <p className="font-bold uppercase" style={{ fontSize: '10px' }}>
+        Signature of Dean / Nodal Officer
+      </p>
+    </div>
+  </div>
+
+  {/* Parent */}
+  <div className="text-center" style={{ width: '180px' }}>
+
+    {/* 🔥 NAME IN BRACKETS */}
+    <p
+      className="font-bold uppercase"
+      style={{
+        fontSize: '11px',
+        marginBottom: '4px'
+      }}
+    >
+      ({data.basicDetails?.fatherName || ""})
+    </p>
+
+    <div style={{ borderTop: '1px solid black', paddingTop: '5px' }}>
+      <p className="font-bold uppercase" style={{ fontSize: '10px' }}>
+        Parent/Guardian Signature
+      </p>
+    </div>
+  </div>
+
+  {/* Candidate */}
+  <div className="text-center" style={{ width: '180px' }}>
+
+    <p
+      className="font-bold uppercase"
+      style={{
+        fontSize: '11px',
+        marginBottom: '4px'
+      }}
+    >
+      ({data.basicDetails?.name || ""})
+    </p>
+
+    <div style={{ borderTop: '1px solid black', paddingTop: '5px' }}>
+      <p className="font-bold uppercase" style={{ fontSize: '10px' }}>
+        Candidate Signature
+      </p>
+    </div>
+  </div>
+
+</div>
 
             <div style={{ position: 'absolute', bottom: '10mm', left: '15mm', right: '15mm' }}>
               <div style={{ borderTop: '1.5px solid black', paddingTop: '8px' }}>

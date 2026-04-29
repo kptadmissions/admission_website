@@ -1,24 +1,26 @@
-// routes/application.officer.routes.js
-
 import express from "express";
 import {
   submitApplication,
   updateApplication,
   getBySSLC,
-  searchApplications   // ✅ ADD THIS
+  searchApplications
 } from "../controllers/application.officer.controller.js";
 
 import { requireAuth } from "@clerk/express";
+import { requireEditAccess } from "../middlewares/access.js"; // ✅ ADD THIS
 
 const router = express.Router();
 
 // 🔐 Officer submits form
-router.post("/submit", requireAuth(), submitApplication);
-// 🔍 ADVANCED SEARCH
-router.get("/search-all", requireAuth(), searchApplications);
+router.post("/submit", requireAuth(), requireEditAccess, submitApplication);
+
+// 🔍 ADVANCED SEARCH (PROTECTED)
+router.get("/search-all", requireAuth(), requireEditAccess, searchApplications);
 
 // 🔍 Public search (no login needed)
 router.get("/search", getBySSLC);
-router.put("/update/:sslc", requireAuth(), updateApplication);
+
+// 🔐 UPDATE (PROTECTED)
+router.put("/update/:sslc", requireAuth(), requireEditAccess, updateApplication);
 
 export default router;

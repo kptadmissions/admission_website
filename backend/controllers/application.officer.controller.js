@@ -259,9 +259,9 @@ export const updateApplication = async (req, res) => {
     const { sslc } = req.params;
     const formData = req.body;
 
-    const existing = await Application.findOne({
-      "educationalParticulars.sslcRegisterNumber": sslc
-    });
+    const id = formData._id;
+
+    const existing = await Application.findById(id);
 
     if (!existing) {
       return res.status(404).json({
@@ -285,9 +285,9 @@ export const updateApplication = async (req, res) => {
       }
     }
 
-    // 🔹 SAFE UPDATE
-    const updated = await Application.findOneAndUpdate(
-      { "educationalParticulars.sslcRegisterNumber": sslc },
+    // ✅ ADD EDITED BY HERE
+    const updated = await Application.findByIdAndUpdate(
+      id,
       {
         basicDetails: formData.basicDetails,
         qualifyingDetails: formData.qualifyingDetails,
@@ -298,7 +298,15 @@ export const updateApplication = async (req, res) => {
         categoryDetails: formData.categoryDetails,
         contactDetails: formData.contactDetails,
         educationalParticulars: formData.educationalParticulars,
-        declaration: formData.declaration
+        declaration: formData.declaration,
+
+        // 🔥 NEW FIELD
+        editedBy: {
+          clerkId: req.auth?.userId,
+          name: req.auth?.sessionClaims?.name || "Officer",
+          role: "verification_officer",
+          editedAt: new Date()
+        }
       },
       { new: true }
     );

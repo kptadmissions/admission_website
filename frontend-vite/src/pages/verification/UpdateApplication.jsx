@@ -1,5 +1,6 @@
 // src/pages/verification/EditApplication.jsx
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom"; // Added for redirection
 import { useAuth } from "@clerk/clerk-react";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -98,6 +99,7 @@ const SectionHeader = ({ icon: Icon, title, subtitle }) => (
 
 export default function EditApplication() {
     const { getToken } = useAuth();
+    const navigate = useNavigate();
     
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -118,7 +120,12 @@ export default function EditApplication() {
             });
             setResults(res.data);
         } catch (error) {
-            toast.error("Error fetching applications");
+            if (error.response?.status === 403) {
+                toast.error("You don't have access to this page");
+                navigate("/unauthorized");
+            } else {
+                toast.error("Error fetching applications");
+            }
         } finally {
             setLoading(false);
         }
@@ -534,8 +541,8 @@ export default function EditApplication() {
                         <SectionHeader icon={BookOpen} title="Educational Particulars & Marks Details" />
                         <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5 border-b border-slate-200 pb-5">
-                                {/* Disabled SSLC Register Number */}
-                                <InputGroup id="sslcRegisterNumber" name="sslcRegisterNumber" label="A) Register Number of SSLC / Equiv" value={form.educationalParticulars?.sslcRegisterNumber ?? ""} onChange={() => {}} disabled={true} className="bg-slate-200 cursor-not-allowed" />
+                                {/* Enabled SSLC Register Number */}
+                                <InputGroup id="sslcRegisterNumber" name="sslcRegisterNumber" label="A) Register Number of SSLC / Equiv" value={form.educationalParticulars?.sslcRegisterNumber ?? ""} onChange={(e) => update("educationalParticulars", "sslcRegisterNumber", e.target.value)} />
                                 <InputGroup id="sslcPassingYear" name="sslcPassingYear" label="Year of Passing" value={form.educationalParticulars?.sslcPassingYear ?? ""} onChange={(e) => update("educationalParticulars", "sslcPassingYear", e.target.value)} required />
                             </div>
                             

@@ -113,6 +113,26 @@ export default function UserManagement() {
     }
   };
 
+  // NEW FEATURE: Toggle Edit Access
+  const toggleAccess = async (id) => {
+    try {
+      const token = await getToken();
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/users/${id}/toggle-edit-access`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to toggle access");
+      }
+
+      toast.success("Access updated");
+      fetchUsers();
+    } catch (err) {
+      toast.error(err.message || "Toggle failed");
+    }
+  };
+
   // Improved search to include name and email
   const filteredUsers = users.filter(u =>
     u.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -206,15 +226,17 @@ export default function UserManagement() {
               <tr>
                 <th className="p-4 text-left">Name</th>
                 <th className="p-4 text-left">Email</th>
-                <th>Role</th>
-                <th>Update</th>
-                <th></th>
+                <th className="p-4 text-center">Role</th>
+                <th className="p-4 text-center">Application Edit Access</th>
+                <th className="p-4 text-center">Toggle</th>
+                <th className="p-4 text-center">Update</th>
+                <th className="p-4 text-center"></th>
               </tr>
             </thead>
-
             <tbody>
               {filteredUsers.map((u, i) => {
                 const isAdmin = u.role === "admin";
+                const isVerificationOfficer = u.role === "verification_officer";
 
                 return (
                   <motion.tr
@@ -227,14 +249,40 @@ export default function UserManagement() {
                     <td className="p-4 font-medium">{u.name || "N/A"}</td>
                     <td className="p-4 text-gray-600">{u.email}</td>
 
-                    <td className="text-center">
+                    <td className="text-center p-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-bold
                         ${isAdmin ? "bg-red-100 text-red-700" : "bg-indigo-100 text-indigo-700"}`}>
                         {u.role}
                       </span>
                     </td>
 
-                    <td className="text-center">
+                    {/* NEW: Access Status Column */}
+                    <td className="text-center p-4">
+                      {isVerificationOfficer ? (
+                        <span className={`font-bold ${u.canEditApplication ? "text-green-600" : "text-red-500"}`}>
+                          {u.canEditApplication ? "ON" : "OFF"}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+
+                    {/* NEW: Toggle Access Button Column */}
+                    <td className="text-center p-4">
+                      {isVerificationOfficer && (
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => toggleAccess(u.id)}
+                          className={`px-3 py-1 rounded-md text-white text-xs font-semibold transition-colors
+                            ${u.canEditApplication ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"}`}
+                        >
+                          {u.canEditApplication ? "Disable" : "Enable"}
+                        </motion.button>
+                      )}
+                    </td>
+
+                    <td className="text-center p-4">
                       {!isAdmin && (
                         <select
                           value={u.role}
@@ -248,7 +296,7 @@ export default function UserManagement() {
                       )}
                     </td>
 
-                    <td className="text-center">
+                    <td className="text-center p-4">
                       {!isAdmin && (
                         <motion.button
                           whileHover={{ scale: 1.1 }}

@@ -1,14 +1,23 @@
 import mongoose from "mongoose";
 
 const applicationSchema = new mongoose.Schema({
-  // 🔹 OFFICER WHO CREATED THIS APPLICATION
+  
+  // 🔹 CREATED BY (ALREADY EXISTS)
   createdBy: {
-    clerkId: { type: String, required: true }, // Clerk user ID
+    clerkId: { type: String, required: true },
     name: String,
     role: { type: String, default: "verification_officer" }
   },
 
-  // 🔹 UNIQUE APPLICATION NUMBER (ACKNOWLEDGEMENT)
+  // ✅ NEW: EDITED BY
+  editedBy: {
+    clerkId: { type: String },
+    name: String,
+    role: String,
+    editedAt: Date
+  },
+
+  // 🔹 APPLICATION NUMBER
   applicationNumber: {
     type: String,
     unique: true,

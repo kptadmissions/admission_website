@@ -1,24 +1,18 @@
 import Application from "../models/Application.js";
+import Counter from "../models/Counter.js";
 
 export const generateApplicationNumber = async (shiftType, category) => {
-  // ✅ Get last 2 digits of year
-  const fullYear = new Date().getFullYear();
-  const shortYear = fullYear.toString().slice(-2); // "26"
+  const year = new Date().getFullYear().toString().slice(-2);
 
-  // 🔹 NORMALIZE CATEGORY
   const normalizeCategory = (cat) => {
     if (!cat) return "GM";
-
     if (cat.includes("SC")) return "SC";
     if (cat === "ST") return "ST";
     if (cat === "Cat-1") return "C-1";
-
     return "GM";
   };
 
   const normalizedCategory = normalizeCategory(category);
-
-  // 🔹 USE NORMALIZED VALUE
   const isReserved = ["SC", "ST", "C-1"].includes(normalizedCategory);
 
   let prefix = "";
@@ -29,17 +23,16 @@ export const generateApplicationNumber = async (shiftType, category) => {
     prefix = isReserved ? "C186" : "G186";
   }
 
-  // 🔹 COUNT EXISTING
-  const regex = new RegExp(`^${prefix}${shortYear}`);
+  const counterId = `${prefix}${year}`;
 
-  const count = await Application.countDocuments({
-    applicationNumber: { $regex: regex }
-  });
+  // 🔥 ATOMIC INCREMENT (IMPORTANT)
+  const counter = await Counter.findByIdAndUpdate(
+    counterId,
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
 
-  const serial = (count + 1).toString().padStart(4, "0");
+  const serial = counter.seq.toString().padStart(4, "0");
 
-  // 🔹 FINAL NUMBER
-  const applicationNumber = `${prefix}${shortYear}${serial}`;
-
-  return applicationNumber;
+  return `${prefix}${year}${serial}`;
 };
