@@ -23,11 +23,13 @@
     "lucide-react": "^0.561.0",
     "papaparse": "^5.5.3",
     "react": "^19.2.0",
+    "react-countup": "^6.5.3",
     "react-dom": "^19.2.0",
     "react-i18next": "^16.5.4",
     "react-icons": "^5.5.0",
     "react-router-dom": "^7.10.1",
     "react-toastify": "^11.0.5",
+    "recharts": "^3.8.1",
     "sweetalert2": "^11.26.10",
     "xlsx": "^0.18.5"
   },

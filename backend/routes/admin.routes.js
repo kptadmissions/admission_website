@@ -1,3 +1,4 @@
+// backend/routes/admin.routes.js
 import express from "express";
 
 import {
@@ -6,6 +7,7 @@ import {
   updateUserRole,
   deleteUser,
   toggleEditAccess,
+  getApplicationsStats
 } from "../controllers/admin.controller.js";
 
 import { requireAuth, requireRole } from "../middlewares/auth.js";
@@ -31,6 +33,7 @@ router.post(
   requireRole(["admin"]),
   createUser
 );
+router.get("/applications", getApplicationsStats);
 
 // ✅ Update role (admin ↔ verification_officer)
 router.patch(
