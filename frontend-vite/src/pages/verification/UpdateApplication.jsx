@@ -436,11 +436,11 @@ export default function EditApplication() {
                         <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 mb-6">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                 <SelectGroup id="qualifyingExam" name="qualifyingExam" label="10. Qualifying Examination" value={form.qualifyingDetails?.qualifyingExam ?? ""} onChange={(e) => update("qualifyingDetails", "qualifyingExam", e.target.value)} options={["SSLC", "CBSE", "ICSE", "OTHERS"]} required />
-                                <SelectGroup id="nativeState" name="nativeState" label="11. Code of the Native State" value={form.qualifyingDetails?.nativeState ?? ""} onChange={(e) => { update("qualifyingDetails", "nativeState", e.target.value); update("qualifyingDetails", "nativeDistrict", ""); }} options={STATES} required />
+                                <SelectGroup id="nativeState" name="nativeState" label="11.  Native State" value={form.qualifyingDetails?.nativeState ?? ""} onChange={(e) => { update("qualifyingDetails", "nativeState", e.target.value); update("qualifyingDetails", "nativeDistrict", ""); }} options={STATES} required />
                                 {form.qualifyingDetails?.nativeState === "Karnataka" ? (
-                                    <SelectGroup id="nativeDistrict" name="nativeDistrict" label="12. If Karnataka, Code of Native District" value={form.qualifyingDetails?.nativeDistrict ?? ""} onChange={(e) => update("qualifyingDetails", "nativeDistrict", e.target.value)} options={KARNATAKA_DISTRICTS} required />
+                                    <SelectGroup id="nativeDistrict" name="nativeDistrict" label="12. If Karnataka, Native District" value={form.qualifyingDetails?.nativeDistrict ?? ""} onChange={(e) => update("qualifyingDetails", "nativeDistrict", e.target.value)} options={KARNATAKA_DISTRICTS} required />
                                 ) : (
-                                    <InputGroup id="nativeDistrict" name="nativeDistrict" label="12. Code of Native District" value={form.qualifyingDetails?.nativeDistrict ?? ""} onChange={(e) => update("qualifyingDetails", "nativeDistrict", e.target.value)} required />
+                                    <InputGroup id="nativeDistrict" name="nativeDistrict" label="12.  Native District" value={form.qualifyingDetails?.nativeDistrict ?? ""} onChange={(e) => update("qualifyingDetails", "nativeDistrict", e.target.value)} required />
                                 )}
                             </div>
                         </div>
