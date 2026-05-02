@@ -145,6 +145,7 @@ const [editable, setEditable] = useState(true);
 const [loading, setLoading] = useState(true);
 const [submitting, setSubmitting] = useState(false);
 const [declarationChecked, setDeclarationChecked] = useState(false);
+const [showSuccessAnimation, setShowSuccessAnimation] = useState(false); // ADDED: STEP 1
 
 useEffect(() => {
 const init = async () => {
@@ -359,6 +360,12 @@ const submit = async () => {
     toast.success("Application Submitted Successfully!");
     alert("Application Submitted Successfully!"); // fallback
 
+    // ADDED: STEP 2 (Trigger overlay logic)
+    setShowSuccessAnimation(true);
+    setTimeout(() => {
+      setShowSuccessAnimation(false);
+    }, 3000);
+
     const newForm = JSON.parse(JSON.stringify(EMPTY_FORM));
     setForm(newForm);
     setDeclarationChecked(false);
@@ -383,6 +390,7 @@ const submit = async () => {
     setSubmitting(false);
   }
 };
+
 if (loading) return <FullPageLoader label="Loading admission form..." />;
 if (admissionsClosed) {
     return (
@@ -407,7 +415,7 @@ const updateDob = (d, m, y) => update("basicDetails", "dob", `${d}-${m}-${y}`);
 
 return (
     <div className="min-h-screen bg-slate-100 py-10 px-4 sm:px-6 font-sans">
-    <div className="max-w-6xl mx-auto bg-white shadow-2xl rounded-xl overflow-hidden border border-slate-200">
+    <div className="max-w-6xl mx-auto bg-white shadow-2xl rounded-xl overflow-hidden border border-slate-200 relative">
         
         {/* HEADER */}
         <div className="bg-blue-900 p-6 text-white border-b-4 border-yellow-500 flex flex-col md:flex-row justify-between items-center gap-4">
@@ -627,6 +635,40 @@ return (
             <div className="mt-8 px-8 py-4 bg-green-50 text-green-700 rounded-lg font-bold border border-green-200 flex justify-center items-center gap-3 text-lg">
             <CheckCircle className="w-6 h-6" /> ✅ Application Successfully Submitted
             </div>
+        )}
+
+        {/* ADDED: STEP 3 (Overlay JSX at the very end of parent) */}
+        {showSuccessAnimation && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            
+            <div className="bg-white rounded-2xl p-10 shadow-2xl flex flex-col items-center animate-scaleIn">
+
+              {/* Pulse Ring */}
+              <div className="absolute w-32 h-32 rounded-full bg-green-400 opacity-30 animate-ping"></div>
+
+              {/* Tick Circle */}
+              <div className="w-24 h-24 rounded-full bg-green-500 flex items-center justify-center shadow-lg animate-bounceSlow relative">
+                <svg
+                  className="w-14 h-14 text-white animate-fadeIn"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+
+              <h2 className="mt-6 text-2xl font-bold text-green-600 animate-fadeIn">
+                Submitted Successfully!
+              </h2>
+
+              <p className="text-slate-500 mt-2 text-sm animate-fadeIn">
+                Your application has been recorded 🎉
+              </p>
+
+            </div>
+          </div>
         )}
 
         </div>
