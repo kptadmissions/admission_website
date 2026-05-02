@@ -219,14 +219,17 @@ export const searchApplications = async (req, res) => {
     const applications = await Application.find(query)
       .sort({ submittedAt: -1 })
       .select({
-        applicationNumber: 1,
-        "basicDetails.name": 1,
-        "basicDetails.fatherName": 1,
-        "contactDetails.mobile": 1,
-        "educationalParticulars.sslcRegisterNumber": 1,
-        submittedAt: 1
-      });
+  applicationNumber: 1,
+  "basicDetails.name": 1,
+  "basicDetails.fatherName": 1,
+  "contactDetails.mobile": 1,
+  "educationalParticulars.sslcRegisterNumber": 1,
+  submittedAt: 1,
 
+  // ✅ NEW FIELDS
+  "createdBy.name": 1,
+  "editedBy.name": 1
+});
     res.json(applications);
 
   } catch (error) {

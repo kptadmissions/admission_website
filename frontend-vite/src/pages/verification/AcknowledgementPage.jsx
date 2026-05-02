@@ -143,18 +143,26 @@ const ErrorState = ({ message, onRetry }) => (
     <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center border border-red-200 shadow-sm">
       <XCircle className="w-10 h-10 text-red-500" />
     </div>
+
     <div>
-      <h2 className="text-xl font-bold text-slate-800 mb-2">No Application Found</h2>
+      <h2 className="text-xl font-bold text-slate-800 mb-2">
+        No Application Found
+      </h2>
       <p className="text-slate-500 text-sm max-w-xs mx-auto">
-        We couldn't find an application matching this SSLC number. Please check the number and try again.
+        We couldn't find an application matching this SSLC number.
       </p>
     </div>
-    <button
+
+    {/* ✅ Only this is a button */}
+    <motion.button
+      type="button"
       onClick={onRetry}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
       className="w-full bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all mt-2"
     >
       <RefreshCcw className="w-4 h-4" /> Try Again
-    </button>
+    </motion.button>
   </motion.div>
 );
 
@@ -197,35 +205,42 @@ export default function AcknowledgementPage() {
     return Promise.all(promises);
   };
 
-  const downloadPDF = async () => {
-    // If preview is hidden, temporarily show it so html2pdf can capture it
-    const wasHidden = !showPreview;
-    if (wasHidden) setShowPreview(true);
-    
-    setDownloading(true);
-    try {
-      const element = document.querySelector("#pdf-content");
-      const studentName = data?.basicDetails?.name || "Student";
-      const sslcNo = data?.educationalParticulars?.sslcRegisterNumber || "SSLC";
-      const filename = `${studentName.replace(/\s+/g, "_")}_${sslcNo}.pdf`;
+  const downloadPDF = async (e) => {
+  if (e) e.preventDefault();
 
-      await waitForImages();
+  const wasHidden = !showPreview;
+  if (wasHidden) setShowPreview(true);
 
-      const opt = {
-        margin: [0, 0, 0, 0],
-        filename: filename,
-        image: { type: "jpeg", quality: 1 },
-        html2canvas: { scale: 3, useCORS: true },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      };
+  setDownloading(true);
 
-      await html2pdf().set(opt).from(element).save();
-    } finally {
-      setDownloading(false);
-      if (wasHidden) setShowPreview(false);
-    }
-  };
+  try {
+    const element = document.querySelector("#pdf-content");
+
+    // ✅ CREATE DYNAMIC FILE NAME
+    const studentName = data?.basicDetails?.name || "Student";
+    const sslcNo = data?.educationalParticulars?.sslcRegisterNumber || "SSLC";
+
+    const filename = `${studentName.replace(/\s+/g, "_")}_${sslcNo}.pdf`;
+
+    await waitForImages();
+
+    await html2pdf().set({
+      margin: [0, 0, 0, 0],
+      filename: filename,   // ✅ USE HERE
+      image: { type: "jpeg", quality: 1 },
+      html2canvas: { scale: 3, useCORS: true },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+    }).from(element).save();
+
+    resetState();
+
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setDownloading(false);
+    if (wasHidden) setShowPreview(false);
+  }
+};
 
   const search = async () => {
     if (!sslc) return;
@@ -246,11 +261,14 @@ export default function AcknowledgementPage() {
     }
   };
 
-  const resetState = () => {
-    setSslc("");
-    setData(null);
-    setUiState("idle");
-  };
+const resetState = () => {
+  setSslc("");          // clear input
+  setData(null);        // remove fetched data
+  setUiState("idle");   // go back to search screen
+  setErrorMsg("");      // clear any errors
+  setDownloading(false);// reset download state
+  setShowPreview(true); // ensure preview is visible next time
+};
 
   const calculatePercentage = (obtained, max) => {
     if (!obtained || !max) return "0.000";
@@ -347,25 +365,6 @@ export default function AcknowledgementPage() {
                     .print-container { box-shadow: none !important; border: none !important; margin: 0 !important; max-width: none !important; }
                     .a4-container { margin: 0 !important; border: none !important; box-shadow: none !important; width: 210mm !important; height: 297mm !important; overflow: hidden; }
                   }
-                    .tight-columns {
-  gap: 4px !important;
-}
-  .ultra-tight {
-  gap: 15px !important;              /* almost no gap */
-}
-
-.ultra-tight .field-item {
-  flex: 0 0 auto !important;        /* stop stretching */
-  min-width: 0;
-}
-
-.ultra-tight .field-label {
-  white-space: nowrap;
-}
-
-.ultra-tight .field-value {
-  margin-left: 2px;                 /* reduce label-value gap */
-}
                   .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
                   .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
                   .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -487,7 +486,7 @@ export default function AcknowledgementPage() {
                     </div>
                   </div>
 
-                  <div className="field-row ultra-tight">
+                  <div className="field-row">
                     <div className="field-item flex-1">
                       <span className="field-label">10. Indian Nationality:</span>
                       <span className="field-value">{(data.basicDetails?.nationality || "").toUpperCase()}</span>
@@ -501,7 +500,7 @@ export default function AcknowledgementPage() {
                       <span className="field-value">{data.educationalParticulars?.sslcPassingYear}</span>
                     </div>
                   </div>
-                  <div className="field-row ultra-tight">
+                  <div className="field-row">
                     <div className="field-item flex-1">
                       <span className="field-label">13. Qualifying Exam Name :</span>
                       <span className="field-value">{data.qualifyingDetails?.qualifyingExam}</span>

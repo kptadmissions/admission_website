@@ -2,11 +2,10 @@ import React, { useEffect, useState, useMemo } from "react";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  BarChart3, Search, Download, FileText, ChevronUp, 
+  BarChart3, Search, Download, ChevronUp, 
   ChevronDown, Filter, Users
 } from "lucide-react";
 import * as XLSX from "xlsx";
-import html2pdf from "html2pdf.js";
 import CountUp from "react-countup";
 
 // Note: Replace this with your actual auth hook if needed
@@ -173,18 +172,6 @@ export default function ApplicationStatistics() {
     XLSX.writeFile(workbook, "Filtered_Application_Statistics.xlsx");
   };
 
-  const exportToPDF = () => {
-    const element = document.getElementById("statistics-table");
-    const opt = {
-      margin: 0.5,
-      filename: 'Application_Statistics.pdf',
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' }
-    };
-    html2pdf().set(opt).from(element).save();
-  };
-
   // Reusable Components
   const SortIcon = ({ column }) => {
     if (sortBy !== column) return null;
@@ -234,9 +221,6 @@ export default function ApplicationStatistics() {
         <div className="flex items-center gap-3">
           <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={exportToExcel} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl shadow hover:bg-emerald-700 transition-colors font-medium">
             <Download size={18} /> Export Excel
-          </motion.button>
-          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={exportToPDF} className="flex items-center gap-2 px-4 py-2 bg-rose-600 text-white rounded-xl shadow hover:bg-rose-700 transition-colors font-medium">
-            <FileText size={18} /> Export PDF
           </motion.button>
         </div>
       </div>
@@ -348,13 +332,15 @@ export default function ApplicationStatistics() {
                     { label: "None", value: "NONE" }
                   ]}
                 />
+                <HeaderCell title="Submitted By" />
+                <HeaderCell title="Edited By" />
               </tr>
             </thead>
             
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="p-16 text-center text-indigo-600 font-semibold animate-pulse">
+                  <td colSpan="10" className="p-16 text-center text-indigo-600 font-semibold animate-pulse">
                     <div className="flex items-center justify-center gap-3 text-lg">
                       <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
                       Loading records...
@@ -363,7 +349,7 @@ export default function ApplicationStatistics() {
                 </tr>
               ) : filteredApplications.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="p-16 text-center text-gray-500">
+                  <td colSpan="10" className="p-16 text-center text-gray-500">
                     <Filter className="mx-auto mb-3 text-gray-400" size={40} />
                     <p className="text-lg font-medium">No applications found</p>
                     <p className="text-sm mt-1 text-gray-400">Try adjusting your filters or search query.</p>
@@ -412,6 +398,8 @@ export default function ApplicationStatistics() {
                             <span className="text-gray-400">-</span>
                           )}
                         </td>
+                        <td className="p-4 text-gray-700">{app.createdBy?.name || "-"}</td>
+                        <td className="p-4 text-gray-700">{app.editedBy?.name || "-"}</td>
                       </motion.tr>
                     );
                   })}
