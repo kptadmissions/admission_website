@@ -347,6 +347,25 @@ export default function AcknowledgementPage() {
                     .print-container { box-shadow: none !important; border: none !important; margin: 0 !important; max-width: none !important; }
                     .a4-container { margin: 0 !important; border: none !important; box-shadow: none !important; width: 210mm !important; height: 297mm !important; overflow: hidden; }
                   }
+                    .tight-columns {
+  gap: 4px !important;
+}
+  .ultra-tight {
+  gap: 15px !important;              /* almost no gap */
+}
+
+.ultra-tight .field-item {
+  flex: 0 0 auto !important;        /* stop stretching */
+  min-width: 0;
+}
+
+.ultra-tight .field-label {
+  white-space: nowrap;
+}
+
+.ultra-tight .field-value {
+  margin-left: 2px;                 /* reduce label-value gap */
+}
                   .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
                   .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
                   .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -468,7 +487,7 @@ export default function AcknowledgementPage() {
                     </div>
                   </div>
 
-                  <div className="field-row">
+                  <div className="field-row ultra-tight">
                     <div className="field-item flex-1">
                       <span className="field-label">10. Indian Nationality:</span>
                       <span className="field-value">{(data.basicDetails?.nationality || "").toUpperCase()}</span>
@@ -482,7 +501,7 @@ export default function AcknowledgementPage() {
                       <span className="field-value">{data.educationalParticulars?.sslcPassingYear}</span>
                     </div>
                   </div>
-                  <div className="field-row">
+                  <div className="field-row ultra-tight">
                     <div className="field-item flex-1">
                       <span className="field-label">13. Qualifying Exam Name :</span>
                       <span className="field-value">{data.qualifyingDetails?.qualifyingExam}</span>
