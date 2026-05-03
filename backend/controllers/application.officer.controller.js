@@ -1,340 +1,418 @@
-import Application from "../models/Application.js";
-import { generateApplicationNumber } from "../utils/generateApplicationNumber.js";
+  import Application from "../models/Application.js";
+  import { generateApplicationNumber } from "../utils/generateApplicationNumber.js";
+  import User from "../models/User.js";
 
-// ✅ SUBMIT APPLICATION
-export const submitApplication = async (req, res) => {
-  try {
-    const formData = req.body;
+  // ✅ SUBMIT APPLICATION
+  export const submitApplication = async (req, res) => {
+    try {
+      const formData = req.body;
 
-    // 🔹 SAFE EXTRACTION
-    const categoryDetails = formData.categoryDetails || {};
-    const edu = formData.educationalParticulars || {};
-    const shift = formData.shiftDetails || {};
-    const study = formData.studyEligibility || {};
+      // 🔹 SAFE EXTRACTION
+      const categoryDetails = formData.categoryDetails || {};
+      const edu = formData.educationalParticulars || {};
+      const shift = formData.shiftDetails || {};
+      const study = formData.studyEligibility || {};
 
-    const shiftType = shift.shiftType;
-    const category = categoryDetails.category;
-    const sslc = edu.sslcRegisterNumber;
+      const shiftType = shift.shiftType;
+      const category = categoryDetails.category;
+      const sslc = edu.sslcRegisterNumber;
 
-    // 🔹 VALIDATION
-    if (!sslc) {
-      return res.status(400).json({ message: "SSLC Register Number is required" });
-    }
+      // 🔹 VALIDATION
+      if (!sslc) {
+        return res.status(400).json({ message: "SSLC Register Number is required" });
+      }
 
-    if (!formData.basicDetails?.motherName || !formData.basicDetails?.fatherName) {
-      return res.status(400).json({ message: "Mother and Father name are required" });
-    }
+      if (!formData.basicDetails?.motherName || !formData.basicDetails?.fatherName) {
+        return res.status(400).json({ message: "Mother and Father name are required" });
+      }
 
-    // 🔹 DUPLICATE SSLC CHECK
-    const existing = await Application.findOne({
-      "educationalParticulars.sslcRegisterNumber": sslc
-    });
-
-    if (existing) {
-      return res.status(400).json({
-        message: "Application already exists for this SSLC number"
+      // 🔹 DUPLICATE SSLC CHECK
+      const existing = await Application.findOne({
+        "educationalParticulars.sslcRegisterNumber": sslc
       });
-    }
 
-    // 🔹 CATEGORY DEFAULT
-    if (!categoryDetails.hasCertificate) {
-      categoryDetails.hasCertificate = "No";
-    }
-
-    if (categoryDetails.hasCertificate === "Yes") {
-      delete categoryDetails.hasAcknowledgement;
-      delete categoryDetails.acknowledgementNumber;
-    } else {
-      if (!categoryDetails.hasAcknowledgement) {
+      if (existing) {
         return res.status(400).json({
-          message: "Please specify acknowledgement status"
+          message: "Application already exists for this SSLC number"
         });
       }
 
-      if (
-        categoryDetails.hasAcknowledgement === "Yes" &&
-        !categoryDetails.acknowledgementNumber
-      ) {
-        return res.status(400).json({
-          message: "Acknowledgement number is required"
-        });
-      }
-    }
-
-    // 🔹 NUMBER CONVERSIONS
-    edu.sslcMaxMarks = Number(edu.sslcMaxMarks);
-    edu.sslcObtainedMarks = Number(edu.sslcObtainedMarks);
-    edu.maxScienceMarks = Number(edu.maxScienceMarks);
-    edu.obtainedScienceMarks = Number(edu.obtainedScienceMarks);
-    edu.maxMathsMarks = Number(edu.maxMathsMarks);
-    edu.obtainedMathsMarks = Number(edu.obtainedMathsMarks);
-    edu.totalMaxScienceMaths = Number(edu.totalMaxScienceMaths);
-    edu.totalObtainedScienceMaths = Number(edu.totalObtainedScienceMaths);
-
-    categoryDetails.annualIncome = Number(categoryDetails.annualIncome);
-
-    study.yearsStudiedInKarnataka = Number(study.yearsStudiedInKarnataka) || 0;
-    shift.experienceYears = Number(shift.experienceYears) || 0;
-    shift.experienceMonths = Number(shift.experienceMonths) || 0;
-
-    // 🔹 DOB CONVERSION
-    if (formData.basicDetails?.dob) {
-      const parts = formData.basicDetails.dob.split("-");
-      if (parts.length === 3) {
-        const [dd, mm, yyyy] = parts;
-        formData.basicDetails.dob = new Date(`${yyyy}-${mm}-${dd}`);
-      }
-    }
-
-    // 🔹 EXAM LOGIC
-    const getExamDetails = (date) => {
-      const d = new Date(date);
-      d.setHours(0, 0, 0, 0);
-
-      const start1 = new Date("2026-04-26");
-      const end1 = new Date("2026-05-05");
-
-      const start2 = new Date("2026-05-06");
-      const end2 = new Date("2026-05-11");
-
-      start1.setHours(0, 0, 0, 0);
-      end1.setHours(0, 0, 0, 0);
-      start2.setHours(0, 0, 0, 0);
-      end2.setHours(0, 0, 0, 0);
-
-      if (d >= start1 && d <= end1) {
-        return { examDate: "06-05-2026", examTime: "10:00 AM" };
+      // 🔹 CATEGORY DEFAULT
+      if (!categoryDetails.hasCertificate) {
+        categoryDetails.hasCertificate = "No";
       }
 
-      if (d >= start2 && d <= end2) {
-        return { examDate: "13-05-2026", examTime: "10:00 AM" };
-      }
+      if (categoryDetails.hasCertificate === "Yes") {
+        delete categoryDetails.hasAcknowledgement;
+        delete categoryDetails.acknowledgementNumber;
+      } else {
+        if (!categoryDetails.hasAcknowledgement) {
+          return res.status(400).json({
+            message: "Please specify acknowledgement status"
+          });
+        }
 
-      return { examDate: "Not Assigned", examTime: "-" };
-    };
-
-    const examDetails = getExamDetails(new Date());
-
-    // 🔥 FIX: SAFE SAVE WITH RETRY
-    let saved = false;
-    let application;
-    let attempts = 0;
-    let applicationNumber;
-
-    while (!saved && attempts < 5) {
-      try {
-        applicationNumber = await generateApplicationNumber(shiftType, category);
-
-        application = new Application({
-          ...formData,
-          categoryDetails,
-          educationalParticulars: edu,
-          shiftDetails: shift,
-          studyEligibility: study,
-          applicationNumber,
-          examDetails,
-          createdBy: {
-            clerkId: req.auth?.userId,
-            name: req.auth?.sessionClaims?.name || "Officer"
-          },
-          status: "SUBMITTED"
-        });
-
-        await application.save();
-        saved = true;
-
-      } catch (err) {
-        if (err.code === 11000) {
-          console.warn("Duplicate application number, retrying...");
-          attempts++;
-        } else {
-          throw err;
+        if (
+          categoryDetails.hasAcknowledgement === "Yes" &&
+          !categoryDetails.acknowledgementNumber
+        ) {
+          return res.status(400).json({
+            message: "Acknowledgement number is required"
+          });
         }
       }
-    }
 
-    if (!saved) {
+      // 🔹 NUMBER CONVERSIONS
+      edu.sslcMaxMarks = Number(edu.sslcMaxMarks);
+      edu.sslcObtainedMarks = Number(edu.sslcObtainedMarks);
+      edu.maxScienceMarks = Number(edu.maxScienceMarks);
+      edu.obtainedScienceMarks = Number(edu.obtainedScienceMarks);
+      edu.maxMathsMarks = Number(edu.maxMathsMarks);
+      edu.obtainedMathsMarks = Number(edu.obtainedMathsMarks);
+      edu.totalMaxScienceMaths = Number(edu.totalMaxScienceMaths);
+      edu.totalObtainedScienceMaths = Number(edu.totalObtainedScienceMaths);
+
+      categoryDetails.annualIncome = Number(categoryDetails.annualIncome);
+
+      study.yearsStudiedInKarnataka = Number(study.yearsStudiedInKarnataka) || 0;
+      shift.experienceYears = Number(shift.experienceYears) || 0;
+      shift.experienceMonths = Number(shift.experienceMonths) || 0;
+
+      // 🔹 DOB CONVERSION
+      if (formData.basicDetails?.dob) {
+        const parts = formData.basicDetails.dob.split("-");
+        if (parts.length === 3) {
+          const [dd, mm, yyyy] = parts;
+          formData.basicDetails.dob = new Date(`${yyyy}-${mm}-${dd}`);
+        }
+      }
+
+      // 🔹 EXAM LOGIC
+      const getExamDetails = (date) => {
+        const d = new Date(date);
+        d.setHours(0, 0, 0, 0);
+
+        const start1 = new Date("2026-04-26");
+        const end1 = new Date("2026-05-05");
+
+        const start2 = new Date("2026-05-06");
+        const end2 = new Date("2026-05-11");
+
+        start1.setHours(0, 0, 0, 0);
+        end1.setHours(0, 0, 0, 0);
+        start2.setHours(0, 0, 0, 0);
+        end2.setHours(0, 0, 0, 0);
+
+        if (d >= start1 && d <= end1) {
+          return { examDate: "06-05-2026", examTime: "10:00 AM" };
+        }
+
+        if (d >= start2 && d <= end2) {
+          return { examDate: "13-05-2026", examTime: "10:00 AM" };
+        }
+
+        return { examDate: "Not Assigned", examTime: "-" };
+      };
+
+      const examDetails = getExamDetails(new Date());
+
+      // 🔥 FIX: SAFE SAVE WITH RETRY
+      let saved = false;
+      let application;
+      let attempts = 0;
+      let applicationNumber;
+
+      while (!saved && attempts < 5) {
+        try {
+          applicationNumber = await generateApplicationNumber(shiftType, category);
+
+          application = new Application({
+            ...formData,
+            categoryDetails,
+            educationalParticulars: edu,
+            shiftDetails: shift,
+            studyEligibility: study,
+            applicationNumber,
+            examDetails,
+            createdBy: {
+              clerkId: req.auth?.userId,
+              name: req.auth?.sessionClaims?.name || "Officer"
+            },
+            status: "SUBMITTED"
+          });
+
+          await application.save();
+          saved = true;
+
+        } catch (err) {
+          if (err.code === 11000) {
+            console.warn("Duplicate application number, retrying...");
+            attempts++;
+          } else {
+            throw err;
+          }
+        }
+      }
+
+      if (!saved) {
+        return res.status(500).json({
+          message: "Failed to generate unique application number. Try again."
+        });
+      }
+
+      return res.status(201).json({
+        message: "Application submitted successfully",
+        applicationNumber,
+        sslc
+      });
+
+    } catch (error) {
+      console.error("FULL ERROR:", error);
       return res.status(500).json({
-        message: "Failed to generate unique application number. Try again."
+        message: error.message
       });
     }
+  };
+  // 🔍 ADVANCED SEARCH (TABLE VIEW) // 🔥 REQUIRED
 
-    return res.status(201).json({
-      message: "Application submitted successfully",
-      applicationNumber,
-      sslc
-    });
+  export const searchApplications = async (req, res) => {
+    try {
+      const {
+        name,
+        fatherName,
+        mobile,
+        sslc,
+        fromDate,
+        toDate
+      } = req.query;
 
-  } catch (error) {
-    console.error("FULL ERROR:", error);
-    return res.status(500).json({
-      message: error.message
-    });
-  }
-};
-// 🔍 ADVANCED SEARCH (TABLE VIEW)
-export const searchApplications = async (req, res) => {
-  try {
-    const {
-      name,
-      fatherName,
-      mobile,
-      sslc,
-      fromDate,
-      toDate
-    } = req.query;
+      let query = {};
 
-    let query = {};
-
-    // 🔹 TEXT SEARCH
-    if (name) {
-      query["basicDetails.name"] = { $regex: name, $options: "i" };
-    }
-
-    if (fatherName) {
-      query["basicDetails.fatherName"] = { $regex: fatherName, $options: "i" };
-    }
-
-    if (mobile) {
-      query["contactDetails.mobile"] = mobile;
-    }
-
-    if (sslc) {
-      query["educationalParticulars.sslcRegisterNumber"] = sslc;
-    }
-
-    // 🔹 DATE FILTER
-    if (fromDate || toDate) {
-      query.submittedAt = {};
-
-      if (fromDate) {
-        query.submittedAt.$gte = new Date(fromDate);
+      // 🔹 TEXT SEARCH
+      if (name) {
+        query["basicDetails.name"] = { $regex: name, $options: "i" };
       }
 
-      if (toDate) {
-        query.submittedAt.$lte = new Date(toDate);
+      if (fatherName) {
+        query["basicDetails.fatherName"] = { $regex: fatherName, $options: "i" };
       }
-    }
 
-    const applications = await Application.find(query)
-      .sort({ submittedAt: -1 })
-      .select({
-  applicationNumber: 1,
-  "basicDetails.name": 1,
-  "basicDetails.fatherName": 1,
-  "contactDetails.mobile": 1,
-  "educationalParticulars.sslcRegisterNumber": 1,
-  submittedAt: 1,
-
-  // ✅ NEW FIELDS
-  "createdBy.name": 1,
-  "editedBy.name": 1
-});
-    res.json(applications);
-
-  } catch (error) {
-    console.error("SEARCH ERROR:", error);
-    res.status(500).json({ message: "Search failed" });
-  }
-};
-// 🔍 SEARCH BY SSLC
-export const getBySSLC = async (req, res) => {
-  try {
-    const { sslc } = req.query;
-
-    if (!sslc) {
-      return res.status(400).json({
-        message: "SSLC number is required"
-      });
-    }
-
-    const application = await Application.findOne({
-      "educationalParticulars.sslcRegisterNumber": sslc
-    }).sort({ createdAt: -1 });
-
-    if (!application) {
-      return res.status(404).json({
-        message: "Application not found"
-      });
-    }
-
-    res.json(application);
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Error searching application"
-    });
-  }
-};
-
-// ✅ UPDATE APPLICATION
-export const updateApplication = async (req, res) => {
-  try {
-    const { sslc } = req.params;
-    const formData = req.body;
-
-    const id = formData._id;
-
-    const existing = await Application.findById(id);
-
-    if (!existing) {
-      return res.status(404).json({
-        message: "Application not found"
-      });
-    }
-
-    // 🔹 VALIDATION
-    if (!formData.basicDetails?.motherName || !formData.basicDetails?.fatherName) {
-      return res.status(400).json({
-        message: "Mother and Father name are required"
-      });
-    }
-
-    // 🔹 DOB FIX
-    if (formData.basicDetails?.dob) {
-      const parts = formData.basicDetails.dob.split("-");
-      if (parts.length === 3) {
-        const [dd, mm, yyyy] = parts;
-        formData.basicDetails.dob = new Date(`${yyyy}-${mm}-${dd}`);
+      if (mobile) {
+        query["contactDetails.mobile"] = mobile;
       }
-    }
 
-    // ✅ ADD EDITED BY HERE
-    const updated = await Application.findByIdAndUpdate(
-      id,
-      {
-        basicDetails: formData.basicDetails,
-        qualifyingDetails: formData.qualifyingDetails,
-        studyEligibility: formData.studyEligibility,
-        exemptionClaims: formData.exemptionClaims,
-        specialCategory: formData.specialCategory,
-        shiftDetails: formData.shiftDetails,
-        categoryDetails: formData.categoryDetails,
-        contactDetails: formData.contactDetails,
-        educationalParticulars: formData.educationalParticulars,
-        declaration: formData.declaration,
+      if (sslc) {
+        query["educationalParticulars.sslcRegisterNumber"] = sslc;
+      }
 
-        // 🔥 NEW FIELD
-        editedBy: {
-          clerkId: req.auth?.userId,
-          name: req.auth?.sessionClaims?.name || "Officer",
-          role: "verification_officer",
-          editedAt: new Date()
+      // 🔹 DATE FILTER
+      if (fromDate || toDate) {
+        query.submittedAt = {};
+
+        if (fromDate) {
+          query.submittedAt.$gte = new Date(fromDate);
         }
-      },
-      { new: true }
-    );
+
+        if (toDate) {
+          query.submittedAt.$lte = new Date(toDate);
+        }
+      }
+
+      // 🔥 FETCH APPLICATIONS (NO PAGINATION HERE)
+      const applications = await Application.find(query)
+        .sort({ submittedAt: -1 })
+        .select({
+          applicationNumber: 1,
+          "basicDetails.name": 1,
+          "basicDetails.fatherName": 1,
+          "contactDetails.mobile": 1,
+          "educationalParticulars.sslcRegisterNumber": 1,
+          submittedAt: 1,
+          createdBy: 1,
+          editedBy: 1
+        })
+        .lean();
+
+      // 🔥 FETCH USERS
+      const users = await User.find({}, "clerkUserId name").lean();
+
+      // 🔥 CREATE MAP
+      const userMap = new Map();
+      users.forEach(u => {
+        userMap.set(u.clerkUserId, u.name);
+      });
+
+      // 🔥 REPLACE NAMES
+      const updatedApplications = applications.map(app => {
+
+        if (app.createdBy?.clerkId) {
+          const realName = userMap.get(app.createdBy.clerkId);
+          if (realName) app.createdBy.name = realName;
+        }
+
+        if (app.editedBy?.clerkId) {
+          const realName = userMap.get(app.editedBy.clerkId);
+          if (realName) app.editedBy.name = realName;
+        }
+
+        return app;
+      });
+
+      res.json(updatedApplications);
+
+    } catch (error) {
+      console.error("SEARCH ERROR:", error);
+      res.status(500).json({ message: "Search failed" });
+    }
+  };
+  // 🔍 SEARCH BY SSLC
+  export const getBySSLC = async (req, res) => {
+    try {
+      const { sslc } = req.query;
+
+      if (!sslc) {
+        return res.status(400).json({
+          message: "SSLC number is required"
+        });
+      }
+
+      const application = await Application.findOne({
+        "educationalParticulars.sslcRegisterNumber": sslc
+      }).sort({ createdAt: -1 });
+
+      if (!application) {
+        return res.status(404).json({
+          message: "Application not found"
+        });
+      }
+
+      res.json(application);
+
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({
+        message: "Error searching application"
+      });
+    }
+  };
+
+  // ✅ UPDATE APPLICATION
+  export const updateApplication = async (req, res) => {
+    try {
+      const { sslc } = req.params;
+      const formData = req.body;
+
+      const id = formData._id;
+
+      const existing = await Application.findById(id);
+
+      if (!existing) {
+        return res.status(404).json({
+          message: "Application not found"
+        });
+      }
+
+      // 🔹 VALIDATION
+      if (!formData.basicDetails?.motherName || !formData.basicDetails?.fatherName) {
+        return res.status(400).json({
+          message: "Mother and Father name are required"
+        });
+      }
+
+      // 🔹 DOB FIX
+      if (formData.basicDetails?.dob) {
+        const parts = formData.basicDetails.dob.split("-");
+        if (parts.length === 3) {
+          const [dd, mm, yyyy] = parts;
+          formData.basicDetails.dob = new Date(`${yyyy}-${mm}-${dd}`);
+        }
+      }
+
+      // ✅ ADD EDITED BY HERE
+   // 🔹 SAFE UPDATE STRUCTURE
+const updated = await Application.findByIdAndUpdate(
+  id,
+  {
+    ...existing.toObject(), // keep old data safe
+
+    basicDetails: formData.basicDetails,
+    qualifyingDetails: formData.qualifyingDetails,
+    studyEligibility: formData.studyEligibility,
+    exemptionClaims: formData.exemptionClaims,
+    specialCategory: formData.specialCategory,
+    shiftDetails: formData.shiftDetails,
+    categoryDetails: formData.categoryDetails,
+    contactDetails: formData.contactDetails,
+    educationalParticulars: formData.educationalParticulars,
+    declaration: formData.declaration,
+
+    editedBy: {
+      clerkId: req.auth?.userId,
+      name: req.auth?.sessionClaims?.name || "Officer",
+      role: "verification_officer",
+      editedAt: new Date()
+    }
+  },
+  { new: true }
+);
+
+      res.json({
+        message: "Application updated successfully",
+        data: updated
+      });
+
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({
+        message: "Update failed"
+      });
+    }
+  };
+
+export const getOfficerDashboard = async (req, res) => {
+  try {
+    const clerkId = req.auth?.userId;
+
+    if (!clerkId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // ✅ GET USER NAME (MAIN FIX)
+    const user = await User.findOne({ clerkUserId: clerkId });
+
+    let finalName =
+      user?.name ||
+      req.auth?.sessionClaims?.name ||
+      "Officer";
+
+    // 🔥 TOTAL APPLICATIONS
+    const totalApplications = await Application.countDocuments();
+
+    // 🔥 MY APPLICATIONS
+    const myApplications = await Application.countDocuments({
+      "createdBy.clerkId": clerkId
+    });
 
     res.json({
-      message: "Application updated successfully",
-      data: updated
+      success: true,
+      data: {
+        name: finalName,
+        totalApplications,
+        myApplications
+      }
     });
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Update failed"
-    });
+    console.error("Dashboard Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+// ✅ CHECK EDIT ACCESS (NEW)
+export const checkEditAccess = async (req, res) => {
+  try {
+    // if middleware passed → user has access
+    return res.json({ allowed: true });
+  } catch (error) {
+    return res.status(403).json({ allowed: false });
   }
 };

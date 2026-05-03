@@ -5,11 +5,10 @@ import {
   BarChart3, Search, Download, ChevronUp, 
   ChevronDown, Filter, Users
 } from "lucide-react";
-import * as XLSX from "xlsx";
 import CountUp from "react-countup";
+import { useAuth } from "@clerk/clerk-react";
 
 // Note: Replace this with your actual auth hook if needed
-const useAuth = () => ({ getToken: async () => "mock-token" });
 
 const SPECIAL_CATEGORIES_LIST = [
   "JTS", "JOC", "EDP", "DP", "PS", "SP", "SG", "AI", 
@@ -18,7 +17,6 @@ const SPECIAL_CATEGORIES_LIST = [
 
 export default function ApplicationStatistics() {
   const { getToken } = useAuth();
-  
   // Base Data State
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -114,7 +112,10 @@ export default function ApplicationStatistics() {
   };
 
   // Helper Logic
-  const getType = (appNum = "") => appNum.startsWith("C") ? "Reserved" : appNum.startsWith("G") ? "GM" : "Unknown";
+ const getType = (appNum = "") =>
+  appNum.startsWith("C") ? "SC/ST/C-1" :
+  appNum.startsWith("G") ? "Others" :
+  "Unknown";
   
   const getSpecialCategories = (sc) => {
     if (!sc) return [];
@@ -154,22 +155,35 @@ export default function ApplicationStatistics() {
   }, [applications, tableFilters]);
 
   // Exports
-  const exportToExcel = () => {
-    const exportData = filteredApplications.map((app) => ({
-      "Application Number": app.applicationNumber,
-      "Name": app.basicDetails?.name || "N/A",
-      "Category": app.categoryDetails?.category || "-",
-      "Type": getType(app.applicationNumber),
-      "Rural": app.studyEligibility?.isRural || "-",
-      "Kannada Medium": app.studyEligibility?.isKannadaMedium || "-",
-      "HK Region": app.exemptionClaims?.isHyderabadKarnataka || "-",
-      "Special Category": getSpecialCategories(app.specialCategory).join(", ") || "-",
-    }));
+  const exportToExcel = async () => {
+    const toastId = toast.loading("Downloading Excel file...");
+    try {
+      const token = await getToken();
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/export`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
 
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Statistics");
-    XLSX.writeFile(workbook, "Filtered_Application_Statistics.xlsx");
+      if (!res.ok) throw new Error("Export failed");
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Applications_Full_Data.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      window.URL.revokeObjectURL(url);
+
+      toast.update(toastId, { render: "Excel downloaded successfully", type: "success", isLoading: false, autoClose: 3000 });
+    } catch (err) {
+      toast.update(toastId, { render: err.message || "Export failed", type: "error", isLoading: false, autoClose: 3000 });
+    }
   };
 
   // Reusable Components
@@ -311,7 +325,10 @@ export default function ApplicationStatistics() {
                 />
                 <HeaderCell 
                   title="Type" column="type_placeholder" filterKey="type"
-                  filterOptions={[{label: "GM", value: "GM"}, {label: "Reserved", value: "Reserved"}]}
+                  filterOptions={[
+  {label: "Others", value: "Others"},
+  {label: "SC/ST/C-1", value: "SC/ST/C-1"}
+]}
                 />
                 <HeaderCell 
                   title="Rural" column="studyEligibility.isRural" filterKey="isRural"
@@ -376,7 +393,7 @@ export default function ApplicationStatistics() {
                         <td className="p-4 text-gray-800 font-medium">{app.basicDetails?.name || "-"}</td>
                         <td className="p-4 text-gray-600">{app.categoryDetails?.category || "-"}</td>
                         <td className="p-4">
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide ${type === "GM" ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"}`}>
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide ${type === "Others" ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"}`}>
                             {type}
                           </span>
                         </td>

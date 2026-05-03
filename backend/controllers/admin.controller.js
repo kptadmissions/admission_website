@@ -3,6 +3,7 @@
 import User from "../models/User.js";
 import AccessControl from "../models/AccessControl.js";
 import Application from "../models/Application.js";
+import XLSX from "xlsx";
 
 // ✅ Roles
 const STAFF_ROLES = ["admin", "verification_officer"];
@@ -198,7 +199,6 @@ export const getApplicationsStats = async (req, res) => {
       page = 1,
       limit = 20,
 
-      // ✅ NEW FILTERS
       category,
       type,
       shift,
@@ -210,9 +210,7 @@ export const getApplicationsStats = async (req, res) => {
 
     const query = {};
 
-    // ===============================
     // ✅ DATE FILTER
-    // ===============================
     if (fromDate && toDate) {
       const start = new Date(fromDate);
       start.setHours(0, 0, 0, 0);
@@ -220,15 +218,10 @@ export const getApplicationsStats = async (req, res) => {
       const end = new Date(toDate);
       end.setHours(23, 59, 59, 999);
 
-      query.submittedAt = {
-        $gte: start,
-        $lte: end,
-      };
+      query.submittedAt = { $gte: start, $lte: end };
     }
 
-    // ===============================
     // ✅ SEARCH
-    // ===============================
     if (search) {
       query.$or = [
         { applicationNumber: { $regex: search, $options: "i" } },
@@ -236,34 +229,15 @@ export const getApplicationsStats = async (req, res) => {
       ];
     }
 
-    // ===============================
-    // ✅ CATEGORY FILTER
-    // ===============================
-    if (category) {
-      query["categoryDetails.category"] = category;
-    }
+    // ✅ FILTERS
+    if (category) query["categoryDetails.category"] = category;
 
-    // ===============================
-    // ✅ TYPE FILTER (G / C)
-    // ===============================
-    if (type === "GM") {
-      query.applicationNumber = { $regex: "^G" };
-    } else if (type === "Reserved") {
-      query.applicationNumber = { $regex: "^C" };
-    }
+    if (type === "GM") query.applicationNumber = { $regex: "^G" };
+    else if (type === "Reserved") query.applicationNumber = { $regex: "^C" };
 
-    // ===============================
-    // ✅ SHIFT FILTER (103 / 186)
-    // ===============================
-    if (shift === "Day") {
-      query.applicationNumber = { $regex: "103" };
-    } else if (shift === "Evening") {
-      query.applicationNumber = { $regex: "186" };
-    }
+    if (shift === "Day") query.applicationNumber = { $regex: "103" };
+    else if (shift === "Evening") query.applicationNumber = { $regex: "186" };
 
-    // ===============================
-    // ✅ SPECIAL CATEGORY FILTER (🔥 ALL)
-    // ===============================
     if (specialCategory && specialCategory !== "NONE") {
       query[`specialCategory.${specialCategory}`] = true;
     }
@@ -271,33 +245,16 @@ export const getApplicationsStats = async (req, res) => {
     if (specialCategory === "NONE") {
       query.$and = [
         { "specialCategory.NCC": { $ne: true } },
-        { "specialCategory.PH": { $ne: true } },
-        { "specialCategory.JTS": { $ne: true } },
-        { "specialCategory.JOC": { $ne: true } },
-        { "specialCategory.EDP": { $ne: true } },
-        { "specialCategory.DP": { $ne: true } },
-        { "specialCategory.PS": { $ne: true } },
-        { "specialCategory.SP": { $ne: true } },
-        { "specialCategory.SG": { $ne: true } },
-        { "specialCategory.AI": { $ne: true } },
-        { "specialCategory.CI": { $ne: true } },
-        { "specialCategory.GK": { $ne: true } },
-        { "specialCategory.ITI": { $ne: true } }
+        { "specialCategory.PH": { $ne: true } }
       ];
     }
 
-    // ===============================
-    // ✅ OTHER FILTERS
-    // ===============================
     if (isRural) query["studyEligibility.isRural"] = isRural;
     if (isKannadaMedium) query["studyEligibility.isKannadaMedium"] = isKannadaMedium;
     if (isHK) query["exemptionClaims.isHyderabadKarnataka"] = isHK;
 
-    // ===============================
-    // ✅ SORTING
-    // ===============================
+    // ✅ SORT
     const sort = {};
-
     if (sortBy === "basicDetails.name") {
       sort["basicDetails.name"] = order === "asc" ? 1 : -1;
     } else if (sortBy === "applicationNumber") {
@@ -306,27 +263,188 @@ export const getApplicationsStats = async (req, res) => {
       sort.createdAt = -1;
     }
 
-    // ===============================
-    // ✅ PAGINATION
-    // ===============================
     const skip = (page - 1) * limit;
 
+    // 🔥 FETCH APPLICATIONS
     const applications = await Application.find(query)
       .sort(sort)
       .skip(skip)
-      .limit(Number(limit));
+      .limit(Number(limit))
+      .lean(); // 🔥 IMPORTANT
 
     const total = await Application.countDocuments(query);
+
+    // 🔥 FETCH USERS
+    const users = await User.find({}, "clerkUserId name").lean();
+
+    // 🔥 MAP clerkUserId → name
+    const userMap = new Map();
+    users.forEach(u => {
+      userMap.set(u.clerkUserId, u.name);
+    });
+
+    // 🔥 FIX NAMES
+    const updatedApplications = applications.map(app => {
+
+      if (app.createdBy?.clerkId) {
+        const realName = userMap.get(app.createdBy.clerkId);
+        if (realName) app.createdBy.name = realName;
+      }
+
+      if (app.editedBy?.clerkId) {
+        const realName = userMap.get(app.editedBy.clerkId);
+        if (realName) app.editedBy.name = realName;
+      }
+
+      return app;
+    });
 
     res.json({
       success: true,
       total,
       page: Number(page),
-      data: applications,
+      data: updatedApplications // ✅ IMPORTANT
     });
 
   } catch (error) {
     console.error("Admin Stats Error:", error);
     res.status(500).json({ error: "Server error" });
+  }
+};
+
+
+
+export const exportToExcel = async (req, res) => {
+  try {
+    // 🔥 Fetch applications
+    const applications = await Application.find().lean();
+
+    // 🔥 Fetch users for name mapping
+    const users = await User.find({}, "clerkUserId name").lean();
+    const userMap = new Map();
+    users.forEach(u => {
+      userMap.set(u.clerkUserId, u.name);
+    });
+
+    // 🔥 Helper: Special Category
+    const getSpecialCategories = (sc) => {
+      if (!sc) return "-";
+      return Object.entries(sc)
+        .filter(([_, val]) => val === true || val === "Yes")
+        .map(([key]) => key)
+        .join(", ");
+    };
+
+    // 🔥 Prepare data (YOUR ORDER)
+    const exportData = applications.map((app, index) => {
+
+      // Fix createdBy / editedBy names
+      let createdByName = app.createdBy?.name || "-";
+      let editedByName = app.editedBy?.name || "-";
+
+      if (app.createdBy?.clerkId) {
+        createdByName = userMap.get(app.createdBy.clerkId) || createdByName;
+      }
+
+      if (app.editedBy?.clerkId) {
+        editedByName = userMap.get(app.editedBy.clerkId) || editedByName;
+      }
+
+      return {
+        // 🟢 1. IDENTIFICATION
+        "Sl No": index + 1,
+        "Application Number": app.applicationNumber || "-",
+        "SATS Number": app.basicDetails?.satsNumber || "-",
+        "Aadhaar Number": app.basicDetails?.aadharNumber || "-",
+
+        // 🟢 2. BASIC DETAILS
+        "Name": app.basicDetails?.name || "-",
+        "Father Name": app.basicDetails?.fatherName || "-",
+        "Mother Name": app.basicDetails?.motherName || "-",
+        "DOB": app.basicDetails?.dob
+          ? new Date(app.basicDetails.dob).toLocaleDateString()
+          : "-",
+        "Gender": app.basicDetails?.gender || "-",
+        "Nationality": app.basicDetails?.nationality || "-",
+        "Religion": app.basicDetails?.religion || "-",
+
+        // 🟢 3. CONTACT DETAILS
+        "Mobile": app.contactDetails?.mobile || "-",
+        "Parent Mobile": app.contactDetails?.parentMobile || "-",
+        "Email": app.contactDetails?.email || "-",
+        "Address": app.contactDetails?.address || "-",
+        "State": app.contactDetails?.state || "-",
+        "District": app.contactDetails?.district || "-",
+        "Pincode": app.contactDetails?.pincode || "-",
+
+        // 🟢 4. QUALIFICATION
+        "Qualifying Exam": app.qualifyingDetails?.qualifyingExam || "-",
+        "SSLC Register Number": app.educationalParticulars?.sslcRegisterNumber || "-",
+        "Passing Year": app.educationalParticulars?.sslcPassingYear || "-",
+
+        // 🟢 5. MARKS
+        "SSLC Max Marks": app.educationalParticulars?.sslcMaxMarks || "-",
+        "SSLC Obtained": app.educationalParticulars?.sslcObtainedMarks || "-",
+        "Science Marks": app.educationalParticulars?.obtainedScienceMarks || "-",
+        "Maths Marks": app.educationalParticulars?.obtainedMathsMarks || "-",
+        "Total Science + Maths": app.educationalParticulars?.totalObtainedScienceMaths || "-",
+
+        // 🟢 6. CATEGORY DETAILS
+        "Category": app.categoryDetails?.category || "-",
+        "Caste Name": app.categoryDetails?.casteName || "-",
+        "Income": app.categoryDetails?.annualIncome || "-",
+        "Certificate Available": app.categoryDetails?.hasCertificate || "-",
+        "Acknowledgement No": app.categoryDetails?.acknowledgementNumber || "-",
+
+        // 🟢 7. ELIGIBILITY
+        "Rural": app.studyEligibility?.isRural || "-",
+        "Kannada Medium": app.studyEligibility?.isKannadaMedium || "-",
+        "Hyderabad Karnataka": app.exemptionClaims?.isHyderabadKarnataka || "-",
+
+        // 🟢 8. SPECIAL CATEGORY
+        "Special Category": getSpecialCategories(app.specialCategory),
+
+        // 🟢 9. ADMIN TRACKING
+        "Created By": createdByName,
+        "Edited By": editedByName
+      };
+    });
+
+    // 🔥 Create Excel
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+    worksheet["!cols"] = [
+      { wch: 6 },
+      { wch: 22 },
+      { wch: 15 },
+      { wch: 18 },
+      { wch: 25 },
+      { wch: 25 },
+      { wch: 25 }
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Applications");
+
+    const buffer = XLSX.write(workbook, {
+      type: "buffer",
+      bookType: "xlsx"
+    });
+
+    // 🔥 Send file
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=Applications_Full_Data.xlsx"
+    );
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    res.send(buffer);
+
+  } catch (error) {
+    console.error("Export Error:", error);
+    res.status(500).json({ error: "Export failed" });
   }
 };

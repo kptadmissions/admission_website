@@ -1,62 +1,65 @@
-// backend/routes/admin.routes.js
-import express from "express";
+  // backend/routes/admin.routes.js
+  import express from "express";
 
-import {
-  getAllUsers,
-  createUser,
-  updateUserRole,
-  deleteUser,
-  toggleEditAccess,
-  getApplicationsStats
-} from "../controllers/admin.controller.js";
+  import {
+    getAllUsers,
+    createUser,
+    updateUserRole,
+    deleteUser,
+    toggleEditAccess,
+    exportToExcel,
+    getApplicationsStats
+  } from "../controllers/admin.controller.js";
 
-import { requireAuth, requireRole } from "../middlewares/auth.js";
+  import { requireAuth, requireRole } from "../middlewares/auth.js";
 
-const router = express.Router();
+  const router = express.Router();
 
-/**
- * 🔐 ALL ROUTES → ADMIN ONLY
- */
+  /**
+   * 🔐 ALL ROUTES → ADMIN ONLY
+   */
 
-// ✅ Get all staff users (with access control)
-router.get(
-  "/users",
-  requireAuth,
-  requireRole(["admin"]),
-  getAllUsers
-);
+  // ✅ Get all staff users (with access control)
+  router.get(
+    "/users",
+    requireAuth,
+    requireRole(["admin"]),
+    getAllUsers
+  );
 
-// ✅ Create or update user
-router.post(
-  "/users",
-  requireAuth,
-  requireRole(["admin"]),
-  createUser
-);
-router.get("/applications", getApplicationsStats);
+  // ✅ Create or update user
+  router.post(
+    "/users",
+    requireAuth,
+    requireRole(["admin"]),
+    createUser
+  );
+  router.get("/applications", getApplicationsStats);
+  router.get("/export", requireAuth, requireRole(["admin"]), exportToExcel);
+  
+    
+  // ✅ Update role (admin ↔ verification_officer)
+  router.patch(
+    "/users/:userId/role",
+    requireAuth,
+    requireRole(["admin"]),
+    updateUserRole
+  );
 
-// ✅ Update role (admin ↔ verification_officer)
-router.patch(
-  "/users/:userId/role",
-  requireAuth,
-  requireRole(["admin"]),
-  updateUserRole
-);
+  // ✅ Toggle edit page access (🔥 MAIN FEATURE)
+  router.patch(
+    "/users/:userId/toggle-edit-access",
+    requireAuth,
+    requireRole(["admin"]),
+    toggleEditAccess
+  );
 
-// ✅ Toggle edit page access (🔥 MAIN FEATURE)
-router.patch(
-  "/users/:userId/toggle-edit-access",
-  requireAuth,
-  requireRole(["admin"]),
-  toggleEditAccess
-);
+  // ✅ Delete user (except admin)
+  router.delete(
+    "/users/:userId",
+    requireAuth,
+    requireRole(["admin"]),
+    deleteUser
+  );
 
-// ✅ Delete user (except admin)
-router.delete(
-  "/users/:userId",
-  requireAuth,
-  requireRole(["admin"]),
-  deleteUser
-);
-
-export default router;
+  export default router;
