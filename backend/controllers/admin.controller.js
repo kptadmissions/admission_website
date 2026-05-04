@@ -5,6 +5,9 @@ import AccessControl from "../models/AccessControl.js";
 import Application from "../models/Application.js";
 import XLSX from "xlsx";
 
+import ExcelJS from "exceljs";
+
+
 // ✅ Roles
 const STAFF_ROLES = ["admin", "verification_officer"];
 
@@ -311,22 +314,14 @@ export const getApplicationsStats = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
-
-
-
 export const exportToExcel = async (req, res) => {
   try {
-    // 🔥 Fetch applications
     const applications = await Application.find().lean();
 
-    // 🔥 Fetch users for name mapping
     const users = await User.find({}, "clerkUserId name").lean();
     const userMap = new Map();
-    users.forEach(u => {
-      userMap.set(u.clerkUserId, u.name);
-    });
+    users.forEach(u => userMap.set(u.clerkUserId, u.name));
 
-    // 🔥 Helper: Special Category
     const getSpecialCategories = (sc) => {
       if (!sc) return "-";
       return Object.entries(sc)
@@ -335,10 +330,101 @@ export const exportToExcel = async (req, res) => {
         .join(", ");
     };
 
-    // 🔥 Prepare data (YOUR ORDER)
-    const exportData = applications.map((app, index) => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Admissions");
 
-      // Fix createdBy / editedBy names
+    // 🔥 TITLE
+    worksheet.mergeCells("A1:Z1");
+    worksheet.getCell("A1").value =
+      "KARNATAKA (GOVT.) POLYTECHNIC, MANGALORE";
+    worksheet.getCell("A1").font = {
+      size: 18,
+      bold: true,
+      color: { argb: "FFFFFFFF" },
+    };
+    worksheet.getCell("A1").alignment = { horizontal: "center" };
+    worksheet.getCell("A1").fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF1F4E78" }, // blue
+    };
+
+    worksheet.mergeCells("A2:Z2");
+    worksheet.getCell("A2").value = "ADMISSIONS 2026-27";
+    worksheet.getCell("A2").font = {
+      size: 14,
+      bold: true,
+      color: { argb: "FFFFFFFF" },
+    };
+    worksheet.getCell("A2").alignment = { horizontal: "center" };
+    worksheet.getCell("A2").fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF305496" },
+    };
+
+    // 🔥 HEADERS (ALL FIELDS)
+    const headers = [
+      "Sl No",
+      "Application Number",
+      "SATS Number",
+      "Aadhaar Number",
+      "SSLC Register Number",
+      "Name",
+      "Father Name",
+      "Mother Name",
+      "DOB",
+      "Gender",
+      "Nationality Indian",
+      "Religion",
+      "Mobile",
+      "Parent Mobile",
+      "Email",
+      "Address",
+      "State",
+      "District",
+      "Pincode",
+      "Qualifying Exam",
+      "Passing Year",
+      "SSLC Max Marks",
+      "SSLC Obtained",
+      "Science Marks",
+      "Maths Marks",
+      "Total Science + Maths",
+      "Category",
+      "Caste Name",
+      "Income",
+      "Certificate Available",
+      "Acknowledgement No",
+      "Rural",
+      "Kannada Medium",
+      "Hyderabad Karnataka",
+      "Special Category",
+      "Created By",
+      "Edited By",
+    ];
+
+    const headerRow = worksheet.addRow(headers);
+
+    // 🎨 HEADER STYLE
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF4472C4" },
+      };
+      cell.alignment = { horizontal: "center" };
+      cell.border = {
+        top: { style: "thin" },
+        bottom: { style: "thin" },
+        left: { style: "thin" },
+        right: { style: "thin" },
+      };
+    });
+
+    // 🔥 DATA ROWS
+    applications.forEach((app, index) => {
       let createdByName = app.createdBy?.name || "-";
       let editedByName = app.editedBy?.name || "-";
 
@@ -350,98 +436,78 @@ export const exportToExcel = async (req, res) => {
         editedByName = userMap.get(app.editedBy.clerkId) || editedByName;
       }
 
-      return {
-        // 🟢 1. IDENTIFICATION
-        "Sl No": index + 1,
-        "Application Number": app.applicationNumber || "-",
-        "SATS Number": app.basicDetails?.satsNumber || "-",
-        "Aadhaar Number": app.basicDetails?.aadharNumber || "-",
-
-        // 🟢 2. BASIC DETAILS
-        "Name": app.basicDetails?.name || "-",
-        "Father Name": app.basicDetails?.fatherName || "-",
-        "Mother Name": app.basicDetails?.motherName || "-",
-        "DOB": app.basicDetails?.dob
+      const row = worksheet.addRow([
+        index + 1,
+        app.applicationNumber || "-",
+        app.basicDetails?.satsNumber || "-",
+        app.basicDetails?.aadharNumber || "-",
+        app.educationalParticulars?.sslcRegisterNumber || "-", // ✅ FIXED POSITION
+        app.basicDetails?.name || "-",
+        app.basicDetails?.fatherName || "-",
+        app.basicDetails?.motherName || "-",
+        app.basicDetails?.dob
           ? new Date(app.basicDetails.dob).toLocaleDateString()
           : "-",
-        "Gender": app.basicDetails?.gender || "-",
-        "Nationality": app.basicDetails?.nationality || "-",
-        "Religion": app.basicDetails?.religion || "-",
+        app.basicDetails?.gender || "-",
+        app.basicDetails?.nationality || "-",
+        app.basicDetails?.religion || "-",
+        app.contactDetails?.mobile || "-",
+        app.contactDetails?.parentMobile || "-",
+        app.contactDetails?.email || "-",
+        app.contactDetails?.address || "-",
+        app.contactDetails?.state || "-",
+        app.contactDetails?.district || "-",
+        app.contactDetails?.pincode || "-",
+        app.qualifyingDetails?.qualifyingExam || "-",
+        app.educationalParticulars?.sslcPassingYear || "-",
+        app.educationalParticulars?.sslcMaxMarks || "-",
+        app.educationalParticulars?.sslcObtainedMarks || "-",
+        app.educationalParticulars?.obtainedScienceMarks || "-",
+        app.educationalParticulars?.obtainedMathsMarks || "-",
+        app.educationalParticulars?.totalObtainedScienceMaths || "-",
+        app.categoryDetails?.category || "-",
+        app.categoryDetails?.casteName || "-",
+        app.categoryDetails?.annualIncome || "-",
+        app.categoryDetails?.hasCertificate || "-",
+        app.categoryDetails?.acknowledgementNumber || "-",
+        app.studyEligibility?.isRural || "-",
+        app.studyEligibility?.isKannadaMedium || "-",
+        app.exemptionClaims?.isHyderabadKarnataka || "-",
+        getSpecialCategories(app.specialCategory),
+        createdByName,
+        editedByName,
+      ]);
 
-        // 🟢 3. CONTACT DETAILS
-        "Mobile": app.contactDetails?.mobile || "-",
-        "Parent Mobile": app.contactDetails?.parentMobile || "-",
-        "Email": app.contactDetails?.email || "-",
-        "Address": app.contactDetails?.address || "-",
-        "State": app.contactDetails?.state || "-",
-        "District": app.contactDetails?.district || "-",
-        "Pincode": app.contactDetails?.pincode || "-",
-
-        // 🟢 4. QUALIFICATION
-        "Qualifying Exam": app.qualifyingDetails?.qualifyingExam || "-",
-        "SSLC Register Number": app.educationalParticulars?.sslcRegisterNumber || "-",
-        "Passing Year": app.educationalParticulars?.sslcPassingYear || "-",
-
-        // 🟢 5. MARKS
-        "SSLC Max Marks": app.educationalParticulars?.sslcMaxMarks || "-",
-        "SSLC Obtained": app.educationalParticulars?.sslcObtainedMarks || "-",
-        "Science Marks": app.educationalParticulars?.obtainedScienceMarks || "-",
-        "Maths Marks": app.educationalParticulars?.obtainedMathsMarks || "-",
-        "Total Science + Maths": app.educationalParticulars?.totalObtainedScienceMaths || "-",
-
-        // 🟢 6. CATEGORY DETAILS
-        "Category": app.categoryDetails?.category || "-",
-        "Caste Name": app.categoryDetails?.casteName || "-",
-        "Income": app.categoryDetails?.annualIncome || "-",
-        "Certificate Available": app.categoryDetails?.hasCertificate || "-",
-        "Acknowledgement No": app.categoryDetails?.acknowledgementNumber || "-",
-
-        // 🟢 7. ELIGIBILITY
-        "Rural": app.studyEligibility?.isRural || "-",
-        "Kannada Medium": app.studyEligibility?.isKannadaMedium || "-",
-        "Hyderabad Karnataka": app.exemptionClaims?.isHyderabadKarnataka || "-",
-
-        // 🟢 8. SPECIAL CATEGORY
-        "Special Category": getSpecialCategories(app.specialCategory),
-
-        // 🟢 9. ADMIN TRACKING
-        "Created By": createdByName,
-        "Edited By": editedByName
-      };
+      // 🎨 Zebra rows
+      if (index % 2 === 0) {
+        row.eachCell((cell) => {
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFF2F2F2" },
+          };
+        });
+      }
     });
 
-    // 🔥 Create Excel
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-
-    worksheet["!cols"] = [
-      { wch: 6 },
-      { wch: 22 },
-      { wch: 15 },
-      { wch: 18 },
-      { wch: 25 },
-      { wch: 25 },
-      { wch: 25 }
-    ];
-
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Applications");
-
-    const buffer = XLSX.write(workbook, {
-      type: "buffer",
-      bookType: "xlsx"
+    // 📏 AUTO WIDTH
+    worksheet.columns.forEach((col) => {
+      col.width = 20;
     });
 
-    // 🔥 Send file
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=Applications_Full_Data.xlsx"
-    );
+    // 🔥 RESPONSE
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
 
-    res.send(buffer);
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=KPT_Admissions_2026-27.xlsx"
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
 
   } catch (error) {
     console.error("Export Error:", error);

@@ -43,7 +43,8 @@ const [tableFilters, setTableFilters] = useState({
   isKannadaMedium: "",
   isHK: "",
   specialCat: "",
-  gender: "" // ✅ NEW
+  gender: "",
+  sslcRegNo: "" // ✅ NEW
 });
 
   // Fetch from API
@@ -135,7 +136,9 @@ const [tableFilters, setTableFilters] = useState({
       if (tableFilters.appNumberType === "103" && !app.applicationNumber.includes("103")) return false;
       if (tableFilters.appNumberType === "186" && !app.applicationNumber.includes("186")) return false;
       if (tableFilters.gender && app.basicDetails?.gender !== tableFilters.gender) return false;
-
+if (tableFilters.sslcRegNo && 
+    !app.educationalParticulars?.sslcRegisterNumber?.toLowerCase().includes(tableFilters.sslcRegNo.toLowerCase())
+) return false;
       if (tableFilters.category && app.categoryDetails?.category !== tableFilters.category) return false;
       if (tableFilters.type && type !== tableFilters.type) return false;
       
@@ -333,6 +336,11 @@ const [tableFilters, setTableFilters] = useState({
 ]}
                 />
                 <HeaderCell 
+  title="SSLC / EQ Reg No"
+  column="educationalParticulars.sslcRegisterNumber"
+  filterKey="sslcRegNo"
+/>
+                <HeaderCell 
   title="Gender" 
   column="basicDetails.gender" 
   filterKey="gender"
@@ -409,6 +417,9 @@ const [tableFilters, setTableFilters] = useState({
   <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide ${type === "Others" ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"}`}>
     {type}
   </span>
+</td>
+<td className="p-4 text-gray-700">
+  {app.educationalParticulars?.sslcRegisterNumber || "-"}
 </td>
 
 <td className="p-4 text-gray-700">

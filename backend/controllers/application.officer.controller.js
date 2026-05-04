@@ -22,6 +22,7 @@ const normalizeCategoryValue = (cat) => {
       const edu = formData.educationalParticulars || {};
       const shift = formData.shiftDetails || {};
       const study = formData.studyEligibility || {};
+      
 
       const shiftType = shift.shiftType;
       const category = normalizeCategoryValue(categoryDetails.category);
@@ -125,7 +126,8 @@ categoryDetails.category = category; // overwrite before saving
         return { examDate: "Not Assigned", examTime: "-" };
       };
 
-      const examDetails = getExamDetails(new Date());
+      const submissionDate = new Date();
+      const examDetails = getExamDetails(submissionDate);
 
       // 🔥 FIX: SAFE SAVE WITH RETRY
       let saved = false;
@@ -137,21 +139,23 @@ categoryDetails.category = category; // overwrite before saving
         try {
           applicationNumber = await generateApplicationNumber(shiftType, category);
 
-          application = new Application({
-            ...formData,
-            categoryDetails,
-            educationalParticulars: edu,
-            shiftDetails: shift,
-            studyEligibility: study,
-            applicationNumber,
-            examDetails,
-            createdBy: {
-              clerkId: req.auth?.userId,
-              name: req.auth?.sessionClaims?.name || "Officer"
-            },
-            status: "SUBMITTED"
-          });
+         application = new Application({
+  ...formData,
+  categoryDetails,
+  educationalParticulars: edu,
+  shiftDetails: shift,
+  studyEligibility: study,
+  applicationNumber,
+  examDetails,
 
+  submittedAt: submissionDate, // ✅ ADD THIS
+
+  createdBy: {
+    clerkId: req.auth?.userId,
+    name: req.auth?.sessionClaims?.name || "Officer"
+  },
+  status: "SUBMITTED"
+});
           await application.save();
           saved = true;
 
