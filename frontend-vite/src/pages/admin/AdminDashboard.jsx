@@ -35,15 +35,16 @@ export default function ApplicationStatistics() {
   const limit = 20;
 
   // Frontend Table Filters (Excel Style)
-  const [tableFilters, setTableFilters] = useState({
-    appNumberType: "",
-    category: "",
-    type: "",
-    isRural: "",
-    isKannadaMedium: "",
-    isHK: "",
-    specialCat: "",
-  });
+const [tableFilters, setTableFilters] = useState({
+  appNumberType: "",
+  category: "",
+  type: "",
+  isRural: "",
+  isKannadaMedium: "",
+  isHK: "",
+  specialCat: "",
+  gender: "" // ✅ NEW
+});
 
   // Fetch from API
   const fetchApplications = async () => {
@@ -133,6 +134,7 @@ export default function ApplicationStatistics() {
       // Application Number Type Filter (103 or 186)
       if (tableFilters.appNumberType === "103" && !app.applicationNumber.includes("103")) return false;
       if (tableFilters.appNumberType === "186" && !app.applicationNumber.includes("186")) return false;
+      if (tableFilters.gender && app.basicDetails?.gender !== tableFilters.gender) return false;
 
       if (tableFilters.category && app.categoryDetails?.category !== tableFilters.category) return false;
       if (tableFilters.type && type !== tableFilters.type) return false;
@@ -331,6 +333,16 @@ export default function ApplicationStatistics() {
 ]}
                 />
                 <HeaderCell 
+  title="Gender" 
+  column="basicDetails.gender" 
+  filterKey="gender"
+  filterOptions={[
+    { label: "Male", value: "Male" },
+    { label: "Female", value: "Female" },
+    { label: "Others", value: "Others" }
+  ]}
+/>
+                <HeaderCell 
                   title="Rural" column="studyEligibility.isRural" filterKey="isRural"
                   filterOptions={[{label: "Yes", value: "Yes"}, {label: "No", value: "No"}]}
                 />
@@ -357,7 +369,7 @@ export default function ApplicationStatistics() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="10" className="p-16 text-center text-indigo-600 font-semibold animate-pulse">
+                  <td colSpan="11" className="p-16 text-center text-indigo-600 font-semibold animate-pulse">
                     <div className="flex items-center justify-center gap-3 text-lg">
                       <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
                       Loading records...
@@ -366,7 +378,7 @@ export default function ApplicationStatistics() {
                 </tr>
               ) : filteredApplications.length === 0 ? (
                 <tr>
-                  <td colSpan="10" className="p-16 text-center text-gray-500">
+                  <td colSpan="11" className="p-16 text-center text-gray-500">
                     <Filter className="mx-auto mb-3 text-gray-400" size={40} />
                     <p className="text-lg font-medium">No applications found</p>
                     <p className="text-sm mt-1 text-gray-400">Try adjusting your filters or search query.</p>
@@ -391,12 +403,17 @@ export default function ApplicationStatistics() {
                       >
                         <td className="p-4 font-semibold text-indigo-700">{app.applicationNumber}</td>
                         <td className="p-4 text-gray-800 font-medium">{app.basicDetails?.name || "-"}</td>
-                        <td className="p-4 text-gray-600">{app.categoryDetails?.category || "-"}</td>
-                        <td className="p-4">
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide ${type === "Others" ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"}`}>
-                            {type}
-                          </span>
-                        </td>
+                      <td className="p-4 text-gray-600">{app.categoryDetails?.category || "-"}</td>
+
+<td className="p-4">
+  <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide ${type === "Others" ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"}`}>
+    {type}
+  </span>
+</td>
+
+<td className="p-4 text-gray-700">
+  {app.basicDetails?.gender || "-"}
+</td>
                         <td className="p-4 text-gray-700">
                           {app.studyEligibility?.isRural === "Yes" ? (
                             <span className="text-emerald-600 font-semibold">Yes</span>
