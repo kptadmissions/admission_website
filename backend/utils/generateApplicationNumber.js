@@ -5,12 +5,16 @@ export const generateApplicationNumber = async (shiftType, category) => {
   const year = new Date().getFullYear().toString().slice(-2);
 
   const normalizeCategory = (cat) => {
-    if (!cat) return "GM";
-    if (cat.includes("SC")) return "SC";
-    if (cat === "ST") return "ST";
-    if (cat === "Cat-1") return "C-1";
-    return "GM";
-  };
+  if (!cat) return "GM";
+
+  const value = cat.toUpperCase().trim();
+
+  if (value.startsWith("SC")) return "SC";
+  if (value === "ST") return "ST";
+  if (value === "CAT-1") return "C-1";
+
+  return "GM";
+};
 
   const normalizedCategory = normalizeCategory(category);
   const isReserved = ["SC", "ST", "C-1"].includes(normalizedCategory);

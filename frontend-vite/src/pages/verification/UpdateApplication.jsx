@@ -14,8 +14,14 @@ import debounce from "lodash.debounce";
 // --- CONFIGURATION ---
 const RELIGIONS = ["Hindu", "Muslim", "Christian", "Sikh", "Jain", "Buddhist", "Parsi", "Other"];
 const CATEGORIES = [
-    "GM", "SC - Category A", "SC - Category B", "SC - Category C", 
-    "ST", "Cat-1", "2A", "2B", "3A", "3B"
+  "GM",
+  "SC",
+  "ST",
+  "Cat-1",
+  "2A",
+  "2B",
+  "3A",
+  "3B"
 ];
 const EXEMPTION_CLAUSES = ["A", "B", "C", "D", "E", "F", "G"];
 const SPECIAL_CATEGORIES_LIST = ["JTS", "JOC", "EDP", "DP", "PS", "SP", "SG", "AI", "CI", "GK", "ITI", "NCC", "PH"];
@@ -183,6 +189,22 @@ useEffect(() => {
                 educationalParticulars: data.educationalParticulars || EMPTY_FORM.educationalParticulars,
                 declaration: data.declaration || EMPTY_FORM.declaration
             };
+           const normalizeCategory = (cat) => {
+  if (!cat) return "GM";
+
+  const value = cat.toUpperCase().trim();
+
+  if (value.startsWith("SC")) return "SC";
+  if (value === "ST") return "ST";
+if (value === "CAT-1" || value === "CAT1") return "Cat-1";
+
+  return "GM";
+};
+
+// ✅ FIX OLD DATA HERE
+safeData.categoryDetails.category = normalizeCategory(
+  safeData.categoryDetails?.category
+);
 
             if (safeData.basicDetails?.dob && safeData.basicDetails.dob.includes("-") && safeData.basicDetails.dob.length > 10) {
                 const d = new Date(safeData.basicDetails.dob);
@@ -512,8 +534,27 @@ useEffect(() => {
                                 {form.categoryDetails?.hasAcknowledgement === "Yes" && form.categoryDetails?.hasCertificate === "No" && (
                                     <InputGroup id="acknowledgementNumber" name="acknowledgementNumber" label="24. Enter Acknowledgement Number" value={form.categoryDetails?.acknowledgementNumber ?? ""} onChange={(e) => update("categoryDetails", "acknowledgementNumber", e.target.value)} required={false} className="md:col-span-3" />
                                 )}
-                                <SelectGroup id="category" name="category" label="25. Reserved Category" value={form.categoryDetails?.category ?? ""} onChange={(e) => update("categoryDetails", "category", e.target.value)} options={CATEGORIES} />
-                                <InputGroup id="casteName" name="casteName" label="26. Name of the Caste" value={form.categoryDetails?.casteName ?? ""} onChange={(e) => update("categoryDetails", "casteName", e.target.value.toUpperCase())} required={form.categoryDetails?.category !== "GM"} />
+                                <SelectGroup id="category" name="category" label="25. Reserved Category"value={form.categoryDetails?.category || "GM"} onChange={(e) => {
+  const val = e.target.value;
+
+  let normalized = val;
+
+  if (val.startsWith("SC")) normalized = "SC";
+  if (val === "CAT-1") normalized = "Cat-1";
+
+  update("categoryDetails", "category", normalized);
+}} options={CATEGORIES} />
+                                <InputGroup
+  id="casteName"
+  name="casteName"
+  label="26. Name of the Caste"
+  value={form.categoryDetails?.casteName ?? ""}
+  onChange={(e) =>
+    update("categoryDetails", "casteName", e.target.value.toUpperCase())
+  }
+  required={form.categoryDetails?.category !== "GM"}
+  disabled={form.categoryDetails?.category === "GM"}  // ✅ ADD THIS
+/>
                                 <InputGroup id="annualIncome" name="annualIncome" label="27. Annual income from all sources" type="number" value={form.categoryDetails?.annualIncome ?? ""} onChange={(e) => update("categoryDetails", "annualIncome", e.target.value)} required />
                             </div>
                         </div>

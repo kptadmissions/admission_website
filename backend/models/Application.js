@@ -184,7 +184,8 @@ const applicationSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-export default mongoose.model("ApplicationByOfficer", applicationSchema);
 applicationSchema.index({
   "educationalParticulars.sslcRegisterNumber": 1
 });
+
+export default mongoose.model("ApplicationByOfficer", applicationSchema);

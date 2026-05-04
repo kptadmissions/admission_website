@@ -6,7 +6,17 @@
   export const submitApplication = async (req, res) => {
     try {
       const formData = req.body;
+const normalizeCategoryValue = (cat) => {
+  if (!cat) return "GM";
 
+  const value = cat.toUpperCase().trim();
+
+  if (value.startsWith("SC")) return "SC";
+  if (value === "ST") return "ST";
+  if (value === "CAT-1") return "Cat-1";
+
+  return value;
+};
       // 🔹 SAFE EXTRACTION
       const categoryDetails = formData.categoryDetails || {};
       const edu = formData.educationalParticulars || {};
@@ -14,7 +24,8 @@
       const study = formData.studyEligibility || {};
 
       const shiftType = shift.shiftType;
-      const category = categoryDetails.category;
+      const category = normalizeCategoryValue(categoryDetails.category);
+categoryDetails.category = category; // overwrite before saving
       const sslc = edu.sslcRegisterNumber;
 
       // 🔹 VALIDATION
@@ -297,77 +308,121 @@
   };
 
   // ✅ UPDATE APPLICATION
-  export const updateApplication = async (req, res) => {
-    try {
-      const { sslc } = req.params;
-      const formData = req.body;
+export const updateApplication = async (req, res) => {
+  try {
+    const { sslc } = req.params;
+    const formData = req.body;
+    const id = formData._id;
 
-      const id = formData._id;
+    const existing = await Application.findById(id);
 
-      const existing = await Application.findById(id);
+    if (!existing) {
+      return res.status(404).json({
+        message: "Application not found"
+      });
+    }
 
-      if (!existing) {
-        return res.status(404).json({
-          message: "Application not found"
-        });
+    // ✅ CATEGORY NORMALIZATION (VERY IMPORTANT)
+    const normalizeCategoryValue = (cat) => {
+      if (!cat) return "GM";
+
+      const value = cat.toUpperCase().trim();
+
+      if (value.startsWith("SC")) return "SC";
+      if (value === "ST") return "ST";
+      if (value === "CAT-1") return "Cat-1";
+
+      return value;
+    };
+
+    const categoryDetails = formData.categoryDetails || {};
+    categoryDetails.category = normalizeCategoryValue(categoryDetails.category);
+
+    // 🔹 DOB FIX
+    if (formData.basicDetails?.dob) {
+      const parts = formData.basicDetails.dob.split("-");
+      if (parts.length === 3) {
+        const [dd, mm, yyyy] = parts;
+        formData.basicDetails.dob = new Date(`${yyyy}-${mm}-${dd}`);
       }
+    }
 
-      // 🔹 VALIDATION
-      if (!formData.basicDetails?.motherName || !formData.basicDetails?.fatherName) {
+    // 🔹 NUMBER CONVERSIONS (IMPORTANT)
+    const edu = formData.educationalParticulars || {};
+    const study = formData.studyEligibility || {};
+    const shift = formData.shiftDetails || {};
+
+    edu.sslcMaxMarks = Number(edu.sslcMaxMarks);
+    edu.sslcObtainedMarks = Number(edu.sslcObtainedMarks);
+    edu.maxScienceMarks = Number(edu.maxScienceMarks);
+    edu.obtainedScienceMarks = Number(edu.obtainedScienceMarks);
+    edu.maxMathsMarks = Number(edu.maxMathsMarks);
+    edu.obtainedMathsMarks = Number(edu.obtainedMathsMarks);
+    edu.totalMaxScienceMaths = Number(edu.totalMaxScienceMaths);
+    edu.totalObtainedScienceMaths = Number(edu.totalObtainedScienceMaths);
+
+    categoryDetails.annualIncome = Number(categoryDetails.annualIncome);
+
+    study.yearsStudiedInKarnataka = Number(study.yearsStudiedInKarnataka) || 0;
+    shift.experienceYears = Number(shift.experienceYears) || 0;
+    shift.experienceMonths = Number(shift.experienceMonths) || 0;
+
+    // 🔹 CERTIFICATE LOGIC (SAME AS SUBMIT)
+    if (!categoryDetails.hasCertificate) {
+      categoryDetails.hasCertificate = "No";
+    }
+
+    if (categoryDetails.hasCertificate === "Yes") {
+      delete categoryDetails.hasAcknowledgement;
+      delete categoryDetails.acknowledgementNumber;
+    } else {
+      if (
+        categoryDetails.hasAcknowledgement === "Yes" &&
+        !categoryDetails.acknowledgementNumber
+      ) {
         return res.status(400).json({
-          message: "Mother and Father name are required"
+          message: "Acknowledgement number is required"
         });
       }
+    }
 
-      // 🔹 DOB FIX
-      if (formData.basicDetails?.dob) {
-        const parts = formData.basicDetails.dob.split("-");
-        if (parts.length === 3) {
-          const [dd, mm, yyyy] = parts;
-          formData.basicDetails.dob = new Date(`${yyyy}-${mm}-${dd}`);
+    // 🔥 SAFE UPDATE
+    const updated = await Application.findByIdAndUpdate(
+      id,
+      {
+        basicDetails: formData.basicDetails,
+        qualifyingDetails: formData.qualifyingDetails,
+        studyEligibility: study,
+        exemptionClaims: formData.exemptionClaims,
+        specialCategory: formData.specialCategory,
+        shiftDetails: shift,
+        categoryDetails: categoryDetails,
+        contactDetails: formData.contactDetails,
+        educationalParticulars: edu,
+        declaration: formData.declaration,
+
+        editedBy: {
+          clerkId: req.auth?.userId,
+          name: req.auth?.sessionClaims?.name || "Officer",
+          role: "verification_officer",
+          editedAt: new Date()
         }
-      }
+      },
+      { new: true }
+    );
 
-      // ✅ ADD EDITED BY HERE
-   // 🔹 SAFE UPDATE STRUCTURE
-const updated = await Application.findByIdAndUpdate(
-  id,
-  {
-    ...existing.toObject(), // keep old data safe
+    res.json({
+      message: "Application updated successfully",
+      data: updated
+    });
 
-    basicDetails: formData.basicDetails,
-    qualifyingDetails: formData.qualifyingDetails,
-    studyEligibility: formData.studyEligibility,
-    exemptionClaims: formData.exemptionClaims,
-    specialCategory: formData.specialCategory,
-    shiftDetails: formData.shiftDetails,
-    categoryDetails: formData.categoryDetails,
-    contactDetails: formData.contactDetails,
-    educationalParticulars: formData.educationalParticulars,
-    declaration: formData.declaration,
-
-    editedBy: {
-      clerkId: req.auth?.userId,
-      name: req.auth?.sessionClaims?.name || "Officer",
-      role: "verification_officer",
-      editedAt: new Date()
-    }
-  },
-  { new: true }
-);
-
-      res.json({
-        message: "Application updated successfully",
-        data: updated
-      });
-
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({
-        message: "Update failed"
-      });
-    }
-  };
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Update failed"
+    });
+  }
+};
 
 export const getOfficerDashboard = async (req, res) => {
   try {

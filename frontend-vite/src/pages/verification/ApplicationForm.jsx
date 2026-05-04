@@ -13,9 +13,7 @@ import FullPageLoader from "../../components/FullPageLoader";
 const RELIGIONS = ["Hindu", "Muslim", "Christian", "Sikh", "Jain", "Buddhist", "Parsi", "Other"];
 const CATEGORIES = [
   "GM",
-  "SC - Category A",
-  "SC - Category B",
-  "SC - Category C",
+  "SC",
   "ST",
   "Cat-1",
   "2A",
@@ -171,6 +169,21 @@ const init = async () => {
 
 init();
 }, []);
+useEffect(() => {
+  if (!form) return;
+
+  // 🔥 Normalize old SC categories
+  const cat = form.categoryDetails?.category;
+if (cat && cat !== "SC" && cat.includes("SC")){
+    setForm(prev => ({
+      ...prev,
+      categoryDetails: {
+        ...prev.categoryDetails,
+        category: "SC"
+      }
+    }));
+  }
+}, [form]);
 
 // Auto Calculation Effect
 useEffect(() => {
@@ -338,7 +351,7 @@ const submit = async () => {
     const token = await getToken();
 
     if (!token) {
-      alert("Authentication failed. Please login again.");
+      toast.error("Authentication failed. Please login again.");
       setSubmitting(false);
       return;
     }
@@ -358,7 +371,6 @@ const submit = async () => {
     console.log("✅ Response:", res.data);
 
     toast.success("Application Submitted Successfully!");
-    alert("Application Submitted Successfully!"); // fallback
 
     // ADDED: STEP 2 (Trigger overlay logic)
     setShowSuccessAnimation(true);
