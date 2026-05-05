@@ -369,7 +369,18 @@ const resetState = () => {
                   .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
                   .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
                   .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-                  
+                  .compact-row {
+  gap: 4px !important;              /* 🔥 reduce horizontal space */
+}
+
+.compact-row .field-item {
+  flex: unset !important;           /* ❌ remove equal stretching */
+  margin-right: 10px;               /* ✅ controlled spacing */
+}
+
+.compact-row .field-item:last-child {
+  margin-right: 0;                  /* remove extra space at end */
+}
                   .pdf-body { -webkit-print-color-adjust: exact; print-color-adjust: exact; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
                   #pdf-content { display: block; background: white; }
                   .a4-container { page-break-after: always; break-after: page; width: 210mm; height: 297mm; margin: 0 auto; background: white; box-sizing: border-box; font-family: Arial, sans-serif; padding: 10mm 15mm; color: black; position: relative; overflow: visible; page-break-inside: avoid; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); margin-bottom: 2rem; }
@@ -486,7 +497,7 @@ const resetState = () => {
                     </div>
                   </div>
 
-                  <div className="field-row">
+                  <div className="field-row compact-row">
                     <div className="field-item flex-1">
                       <span className="field-label">10. Indian Nationality:</span>
                       <span className="field-value">{(data.basicDetails?.nationality || "").toUpperCase()}</span>
@@ -500,7 +511,8 @@ const resetState = () => {
                       <span className="field-value">{data.educationalParticulars?.sslcPassingYear}</span>
                     </div>
                   </div>
-                  <div className="field-row">
+                                    <div className="field-row compact-row">
+
                     <div className="field-item flex-1">
                       <span className="field-label">13. Qualifying Exam Name :</span>
                       <span className="field-value">{data.qualifyingDetails?.qualifyingExam}</span>

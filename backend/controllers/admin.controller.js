@@ -316,7 +316,35 @@ export const getApplicationsStats = async (req, res) => {
 };
 export const exportToExcel = async (req, res) => {
   try {
-    const applications = await Application.find().lean();
+    const { fromDate, toDate, search } = req.query;
+
+    const query = {};
+
+    // ✅ FLEXIBLE DATE FILTER (IMPORTANT FIX)
+    if (fromDate || toDate) {
+      query.submittedAt = {};
+
+      if (fromDate) {
+        const start = new Date(fromDate);
+        start.setHours(0, 0, 0, 0);
+        query.submittedAt.$gte = start;
+      }
+
+      if (toDate) {
+        const end = new Date(toDate);
+        end.setHours(23, 59, 59, 999);
+        query.submittedAt.$lte = end;
+      }
+    }
+
+    // ✅ SEARCH FILTER
+    if (search) {
+      query.$or = [
+        { applicationNumber: { $regex: search, $options: "i" } },
+        { "basicDetails.name": { $regex: search, $options: "i" } }
+      ];
+    }
+    const applications = await Application.find(query).lean();
 
     const users = await User.find({}, "clerkUserId name").lean();
     const userMap = new Map();
@@ -333,7 +361,7 @@ export const exportToExcel = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Admissions");
 
-    // 🔥 TITLE
+    // 🔥 TITLE ROW 1
     worksheet.mergeCells("A1:Z1");
     worksheet.getCell("A1").value =
       "KARNATAKA (GOVT.) POLYTECHNIC, MANGALORE";
@@ -346,11 +374,16 @@ export const exportToExcel = async (req, res) => {
     worksheet.getCell("A1").fill = {
       type: "pattern",
       pattern: "solid",
-      fgColor: { argb: "FF1F4E78" }, // blue
+      fgColor: { argb: "FF1F4E78" },
     };
 
+    // 🔥 TITLE ROW 2 (WITH DATE RANGE)
     worksheet.mergeCells("A2:Z2");
-    worksheet.getCell("A2").value = "ADMISSIONS 2026-27";
+    worksheet.getCell("A2").value =
+      fromDate && toDate
+        ? `ADMISSIONS 2026-27 (${fromDate} to ${toDate})`
+        : "ADMISSIONS 2026-27";
+
     worksheet.getCell("A2").font = {
       size: 14,
       bold: true,
@@ -363,7 +396,7 @@ export const exportToExcel = async (req, res) => {
       fgColor: { argb: "FF305496" },
     };
 
-    // 🔥 HEADERS (ALL FIELDS)
+    // 🔥 HEADERS
     const headers = [
       "Sl No",
       "Application Number",
@@ -423,7 +456,7 @@ export const exportToExcel = async (req, res) => {
       };
     });
 
-    // 🔥 DATA ROWS
+    // 🔥 DATA
     applications.forEach((app, index) => {
       let createdByName = app.createdBy?.name || "-";
       let editedByName = app.editedBy?.name || "-";
@@ -441,7 +474,7 @@ export const exportToExcel = async (req, res) => {
         app.applicationNumber || "-",
         app.basicDetails?.satsNumber || "-",
         app.basicDetails?.aadharNumber || "-",
-        app.educationalParticulars?.sslcRegisterNumber || "-", // ✅ FIXED POSITION
+        app.educationalParticulars?.sslcRegisterNumber || "-",
         app.basicDetails?.name || "-",
         app.basicDetails?.fatherName || "-",
         app.basicDetails?.motherName || "-",
@@ -503,7 +536,7 @@ export const exportToExcel = async (req, res) => {
 
     res.setHeader(
       "Content-Disposition",
-      "attachment; filename=KPT_Admissions_2026-27.xlsx"
+      "attachment; filename=KPT_Admissions_Filtered.xlsx"
     );
 
     await workbook.xlsx.write(res);

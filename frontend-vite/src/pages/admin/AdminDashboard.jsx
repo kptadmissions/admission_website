@@ -160,36 +160,70 @@ if (tableFilters.sslcRegNo &&
   }, [applications, tableFilters]);
 
   // Exports
-  const exportToExcel = async () => {
-    const toastId = toast.loading("Downloading Excel file...");
-    try {
-      const token = await getToken();
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/export`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+ const exportToExcel = async () => {
+  const toastId = toast.loading("Downloading Excel file...");
+  try {
+    const token = await getToken();
 
-      if (!res.ok) throw new Error("Export failed");
+    // ✅ BUILD QUERY PARAMS (IMPORTANT)
+    const params = new URLSearchParams();
 
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
+    if (apiFilters.fromDate) params.append("fromDate", apiFilters.fromDate);
+    if (apiFilters.toDate) params.append("toDate", apiFilters.toDate);
+    if (apiFilters.search) params.append("search", apiFilters.search);
 
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "Applications_Full_Data.xlsx";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+    const url = `${import.meta.env.VITE_API_URL}/admin/export?${params.toString()}`;
 
-      window.URL.revokeObjectURL(url);
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
 
-      toast.update(toastId, { render: "Excel downloaded successfully", type: "success", isLoading: false, autoClose: 3000 });
-    } catch (err) {
-      toast.update(toastId, { render: err.message || "Export failed", type: "error", isLoading: false, autoClose: 3000 });
+    if (!res.ok) throw new Error("Export failed");
+
+    const blob = await res.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = downloadUrl;
+
+    // ✅ SMART FILE NAME
+    let fileName = "Applications";
+
+    if (apiFilters.fromDate && apiFilters.toDate) {
+      fileName += `_${apiFilters.fromDate}_to_${apiFilters.toDate}`;
+    } else if (apiFilters.fromDate) {
+      fileName += `_from_${apiFilters.fromDate}`;
+    } else if (apiFilters.toDate) {
+      fileName += `_upto_${apiFilters.toDate}`;
     }
-  };
+
+    a.download = `${fileName}.xlsx`;
+
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    window.URL.revokeObjectURL(downloadUrl);
+
+    toast.update(toastId, {
+      render: "Excel downloaded successfully",
+      type: "success",
+      isLoading: false,
+      autoClose: 3000
+    });
+
+  } catch (err) {
+    toast.update(toastId, {
+      render: err.message || "Export failed",
+      type: "error",
+      isLoading: false,
+      autoClose: 3000
+    });
+  }
+};
 
   // Reusable Components
   const SortIcon = ({ column }) => {
