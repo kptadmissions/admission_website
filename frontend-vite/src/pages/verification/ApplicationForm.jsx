@@ -41,7 +41,7 @@ const KARNATAKA_DISTRICTS = [
 "Dakshina Kannada","Davanagere","Dharwad","Gadag","Hassan",
 "Haveri","Kalaburagi","Kodagu","Kolar","Koppal",
 "Mandya","Mysuru","Raichur","Ramanagara","Shivamogga",
-"Tumakuru","Udupi","Uttara Kannada","Vijayapura","Yadgir"
+"Tumakuru","Udupi","Uttara Kannada","Vijayapura","Vijayanagara","Yadgir"
 ];
 
 const EMPTY_FORM = {
