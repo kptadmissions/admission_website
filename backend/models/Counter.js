@@ -4,7 +4,7 @@ const counterSchema = new mongoose.Schema({
   _id: String, // e.g. APP26
   seq: {
     type: Number,
-    default: 2000
+    default: 3000 // ✅ changed from 2000
   }
 });
 

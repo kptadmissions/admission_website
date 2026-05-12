@@ -100,32 +100,59 @@ categoryDetails.category = category; // overwrite before saving
       }
 
       // 🔹 EXAM LOGIC
-      const getExamDetails = (date) => {
-        const d = new Date(date);
-        d.setHours(0, 0, 0, 0);
+      // 🔹 EXAM LOGIC
+const getExamDetails = (date) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
 
-        const start1 = new Date("2026-04-26");
-        const end1 = new Date("2026-05-05");
+  const start1 = new Date("2026-04-26");
+  const end1 = new Date("2026-05-05");
 
-        const start2 = new Date("2026-05-06");
-        const end2 = new Date("2026-05-11");
+  const start2 = new Date("2026-05-06");
+  const end2 = new Date("2026-05-11");
 
-        start1.setHours(0, 0, 0, 0);
-        end1.setHours(0, 0, 0, 0);
-        start2.setHours(0, 0, 0, 0);
-        end2.setHours(0, 0, 0, 0);
+  // ✅ NEW RANGE
+  const start3 = new Date("2026-05-12");
+  const end3 = new Date("2026-05-16");
 
-        if (d >= start1 && d <= end1) {
-          return { examDate: "06-05-2026", examTime: "10:00 AM" };
-        }
+  start1.setHours(0, 0, 0, 0);
+  end1.setHours(0, 0, 0, 0);
 
-        if (d >= start2 && d <= end2) {
-          return { examDate: "13-05-2026", examTime: "10:00 AM" };
-        }
+  start2.setHours(0, 0, 0, 0);
+  end2.setHours(0, 0, 0, 0);
 
-        return { examDate: "Not Assigned", examTime: "-" };
-      };
+  start3.setHours(0, 0, 0, 0);
+  end3.setHours(0, 0, 0, 0);
 
+  // ✅ PHASE 1
+  if (d >= start1 && d <= end1) {
+    return {
+      examDate: "06-05-2026",
+      examTime: "10:00 AM"
+    };
+  }
+
+  // ✅ PHASE 2
+  if (d >= start2 && d <= end2) {
+    return {
+      examDate: "13-05-2026",
+      examTime: "10:00 AM"
+    };
+  }
+
+  // ✅ NEW PHASE
+  if (d >= start3 && d <= end3) {
+    return {
+      examDate: "18-05-2026",
+      examTime: "10:00 AM"
+    };
+  }
+
+  return {
+    examDate: "Not Assigned",
+    examTime: "-"
+  };
+};
       const submissionDate = new Date();
       const examDetails = getExamDetails(submissionDate);
 
