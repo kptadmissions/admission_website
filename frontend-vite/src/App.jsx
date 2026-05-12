@@ -1,179 +1,44 @@
-import { Routes, Route } from "react-router-dom";
-
-import RoleBasedNavbar from "./navbars/RoleBasedNavbar";
-import DashboardRedirect from "./components/DashboardRedirect";
-
-import Landing from "./pages/Landing";
-import Unauthorized from "./pages/Unauthorized";
-
-import RequireRole from "./auth/RequireRole";
-
-// ================= ADMIN =================
-import AdminLayout from "./pages/admin/AdminLayout";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import ManageUsers from "./pages/admin/manage-users";
-import CreateUser from "./pages/admin/SeatManage";
-import AdminAdmissionControl from "./pages/admin/AdminAdmissionControl";
-import ExamQuestion from "./pages/admin/ExamQuestions";
-import ExamControl from "./pages/admin/ExamControl";
-
-// ================= STUDENT =================
-import StudentDashboard from "./pages/student/StudentDashboard";
-import AdmissionForm from "./pages/student/AdmissionForm";
-import ExamPage from "./pages/student/ExamPage";
-
-// ================= VERIFICATION =================
-import VerifyApplications from "./pages/verification/VerifyApplications";
-import GenerateMerit from "./pages/verification/GenerateMerit";
-import FinalApproval from "./pages/verification/FinalApproval";
-import MeritList from "./pages/verification/MeritList";
-import SeatAllocation from "./pages/verification/SeatAllocation";
-import OfficerDashboard from "./pages/verification/OfficerDashboard";
-import ApplicationForm from "./pages/verification/ApplicationForm";
-import AcknowledgementPage from "./pages/verification/AcknowledgementPage";
-import UpdateApplication from "./pages/verification/UpdateApplication";
-// GLOBAL SHELL
-import AppShell from "./layout/AppShell";
+// src/App.jsx
 
 export default function App() {
   return (
-    <AppShell>
-      <RoleBasedNavbar />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-950 via-slate-900 to-black text-white px-6">
+      
+      <div className="text-center max-w-2xl">
+        
+        {/* Logo/Icon */}
+        <div className="text-6xl mb-6">🚧</div>
 
-      <Routes>
-        {/* ===== PUBLIC ===== */}
-        <Route path="/" element={<Landing />} />
-        <Route path="/redirect" element={<DashboardRedirect />} />
-        <Route path="/unauthorized" element={<Unauthorized />} />
+        {/* Title */}
+        <h1 className="text-5xl font-extrabold mb-4 tracking-wide">
+          KPT Admissions
+        </h1>
 
-        {/* ===== ADMIN ===== */}
-        <Route
-          path="/admin"
-          element={
-            <RequireRole allowedRoles={["admin"]}>
-              <AdminLayout />
-            </RequireRole>
-          }
-        >
-          <Route index element={<AdminDashboard />} />
-          <Route path="manage-users" element={<ManageUsers />} />
-          <Route path="s-manage" element={<CreateUser />} />
-          <Route path="admission-control" element={<AdminAdmissionControl />} />
-          <Route path="exam-questions" element={<ExamQuestion />} />
-          <Route path="exam-control" element={<ExamControl />} />
-        </Route>
+        {/* Subtitle */}
+        <h2 className="text-2xl md:text-3xl font-semibold text-blue-300 mb-6">
+          Website Under Maintenance
+        </h2>
 
-        {/* ===== STUDENT ===== */}
-        <Route
-          path="/student"
-          element={
-            <RequireRole allowedRoles={["student"]}>
-              <StudentDashboard />
-            </RequireRole>
-          }
-        />
+        {/* Message */}
+        <p className="text-slate-300 text-lg leading-relaxed">
+          We are currently upgrading the admission portal to improve
+          performance, security, and user experience.
+          <br />
+          Please check back again later.
+        </p>
 
-        <Route
-          path="/student/application"
-          element={
-            <RequireRole allowedRoles={["student"]}>
-              <AdmissionForm />
-            </RequireRole>
-          }
-        />
+        {/* Status Box */}
+        <div className="mt-10 inline-block px-6 py-3 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-md">
+          <p className="text-green-400 font-semibold animate-pulse">
+            Maintenance in Progress...
+          </p>
+        </div>
 
-        <Route
-          path="/student/exam"
-          element={
-            <RequireRole allowedRoles={["student"]}>
-              <ExamPage />
-            </RequireRole>
-          }
-        />
-
-
-        {/* ===== VERIFICATION OFFICER ===== */}
-
-        {/* IMPORTANT: changed base path to avoid conflict */}
-        <Route
-          path="/verification-home"
-          element={
-            <RequireRole allowedRoles={["verification_officer"]}>
-              <VerifyApplications />
-            </RequireRole>
-          }
-        />
-<Route
-  path="/verification/acknowledgement"
-  element={
-    <RequireRole allowedRoles={["verification_officer"]}>
-      <AcknowledgementPage />
-    </RequireRole>
-  }
-/>
-<Route
-  path="/verification/update"
-  element={
-    <RequireRole allowedRoles={["verification_officer"]}>
-      <UpdateApplication />
-    </RequireRole>
-  }
-/>
-
-        <Route
-          path="/verification/applicationform"
-          element={
-            <RequireRole allowedRoles={["verification_officer"]}>
-              <ApplicationForm />
-            </RequireRole>
-          }
-        />
-
-        <Route
-          path="/verification/dashboard"
-          element={
-            <RequireRole allowedRoles={["verification_officer"]}>
-              <OfficerDashboard />
-            </RequireRole>
-          }
-        />
-
-        <Route
-          path="/verification/merit"
-          element={
-            <RequireRole allowedRoles={["verification_officer"]}>
-              <GenerateMerit />
-            </RequireRole>
-          }
-        />
-
-        <Route
-          path="/verification/final"
-          element={
-            <RequireRole allowedRoles={["verification_officer"]}>
-              <FinalApproval />
-            </RequireRole>
-          }
-        />
-
-        <Route
-          path="/verification/merit-list"
-          element={
-            <RequireRole allowedRoles={["verification_officer"]}>
-              <MeritList />
-            </RequireRole>
-          }
-        />
-
-        <Route
-          path="/verification/seat-allocation"
-          element={
-            <RequireRole allowedRoles={["verification_officer"]}>
-              <SeatAllocation />
-            </RequireRole>
-          }
-        />
-      </Routes>
-    </AppShell>
+        {/* Footer */}
+        <p className="mt-12 text-slate-500 text-sm">
+          © 2026 Karnataka Polytechnic Mangalore
+        </p>
+      </div>
+    </div>
   );
 }
