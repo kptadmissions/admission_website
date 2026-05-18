@@ -25,18 +25,18 @@ export default function VerificationNavbar() {
             Dashboard
           </Link>
 
-          <Link to="/verification/applicationform" className={active("/verification/applicationform")}>
+          {/* <Link to="/verification/applicationform" className={active("/verification/applicationform")}>
             Application Form
           </Link>
 
-          {/* ✅ FIXED HERE */}
           <Link to="/verification/update" className={active("/verification/update")}>
             Update Application
           </Link>
 
           <Link to="/verification/acknowledgement" className={active("/verification/acknowledgement")}>
             Acknowledgement
-          </Link>
+          </Link> 
+          */}
 
           <UserButton afterSignOutUrl="/" />
         </div>
